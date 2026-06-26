@@ -223,13 +223,12 @@ Each week is broken into named **sections** (e.g. "Section A: docker-compose + D
 7. **Move to next section.** Do not start it until the user says go.
 
 ### Commit message format
-```
-<type>(week-N/<section-slug>): <what changed>
-```
+Classic conventional commits: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`
+
 Examples:
-- `feat(week-1/docker-compose): add postgres + redis containers`
-- `feat(week-1/db-session): async sqlalchemy session factory and base model`
-- `test(week-1/health): integration test for /health with live DB and Redis`
+- `feat: add docker-compose with postgres and redis`
+- `feat: async sqlalchemy session factory and base model`
+- `test: integration test for /health with live db and redis`
 
 ### Week structure in PROGRESS.md
 Each week lists its sections explicitly. Each section has:
