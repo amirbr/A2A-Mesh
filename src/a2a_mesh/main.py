@@ -4,10 +4,12 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from a2a.server.routes import add_a2a_routes_to_fastapi
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from a2a_mesh.agents.echo import build_echo_routes
 from a2a_mesh.core.redis import close_redis, get_redis
 from a2a_mesh.db.session import AsyncSessionLocal
 from a2a_mesh.logging import configure_logging
@@ -33,6 +35,10 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+# Mount echo agent A2A routes
+_card_routes, _rpc_routes = build_echo_routes()
+add_a2a_routes_to_fastapi(app, agent_card_routes=_card_routes, jsonrpc_routes=_rpc_routes)
 
 
 @app.get("/health")

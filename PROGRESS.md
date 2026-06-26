@@ -75,19 +75,24 @@ Finished: 2026-06-26
 
 ## Week 2 — First A2A Agent (Echo Agent)
 
-Started: ____
+Started: 2026-06-26
 Finished: ____
 **Goal:** An A2A-compliant Echo Agent that any A2A client can talk to.
 
-- [ ] Define Agent Card spec for Echo Agent
-- [ ] Implement `GET /.well-known/agent.json`
-- [ ] Implement `POST /a2a/{agent_id}/message/send` (JSON-RPC)
-- [ ] Implement `POST /a2a/{agent_id}/message/stream` (SSE streaming)
-- [ ] Implement `GET /a2a/{agent_id}/tasks/{task_id}`
-- [ ] Basic in-memory task storage
-- [ ] Test with Google's reference A2A client
-- [ ] Write tests for each endpoint
-- **Demo at end of week:** External client sends "hello", agent echoes back
+### Section A: Echo Agent in main app
+- [x] `src/a2a_mesh/agents/echo.py` — EchoAgentExecutor + build_echo_routes()
+- [x] `src/a2a_mesh/main.py` — mount agent card + JSON-RPC routes via a2a-sdk
+- [x] `GET /.well-known/agent-card.json` — AgentCard with skills
+- [x] `POST /a2a/echo/` — SendMessage (JSON-RPC, A2A-Version: 1.0)
+- [x] `tests/test_api/test_echo_agent.py` — 8 tests (agent card + send message happy/error paths)
+- [x] 11/11 tests passing
+- [ ] Commit: `feat: echo agent wired into main app with agent card and json-rpc`
+
+### Section B: Postgres task storage (next)
+- [ ] DB model for Task
+- [ ] Alembic migration
+- [ ] Custom AsyncTaskStore replacing InMemoryTaskStore
+- [ ] Tests
 
 ---
 
