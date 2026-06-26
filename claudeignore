@@ -1,0 +1,78 @@
+# Files Claude Code should ignore when reading project context.
+# Same syntax as .gitignore.
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+.installed.cfg
+develop-eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.uv/
+
+# Caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+.cache/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres-data/
+redis-data/
+
+# Docker volumes
+.docker/
+
+# Node (if we ever add tooling)
+node_modules/
+package-lock.json
+
+# Large generated files
+*.csv
+*.parquet
+fixtures/large/
+
+# Documentation builds
+site/
+_build/
+
+# Coverage
+.coverage
+coverage.xml
+*.cover
