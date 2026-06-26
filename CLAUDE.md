@@ -210,17 +210,34 @@ These are common LLM-coding mistakes. Avoid all of them.
 
 ## 6. Workflow Expectations
 
-For every task:
+Each week is broken into named **sections** (e.g. "Section A: docker-compose + DB session", "Section B: alembic setup"). Each section ends with a test run and a commit. Never bundle multiple sections into one commit.
 
-1. **Confirm understanding.** State what you're about to do in one sentence before doing it.
-2. **Check PROGRESS.md.** Know what week we're on and what was last completed.
-3. **Plan briefly.** List the files to create or modify (3–5 bullet points).
-4. **Implement.** Write the code.
-5. **Test.** Write tests, run them.
-6. **Update PROGRESS.md.** Check off the task. Note the date.
-7. **Suggest a commit message** (conventional commit format).
+### Per-section loop (repeat for every section in the week):
 
-If user says "do X", and X spans multiple files or hours, **break it into smaller steps and confirm before each.**
+1. **Confirm understanding.** State what section you're doing and list files to create/modify (3–5 bullets).
+2. **Check PROGRESS.md.** Know what week/section we're on and what was last completed.
+3. **Implement.** Write the code.
+4. **Test.** Run `uv run pytest` (and `uv run pytest -m integration` if services are up). All tests must pass before committing.
+5. **Update PROGRESS.md.** Check off the section's tasks.
+6. **Commit.** Suggest a conventional commit message scoped to this section only. Wait for user to commit or do it.
+7. **Move to next section.** Do not start it until the user says go.
+
+### Commit message format
+```
+<type>(week-N/<section-slug>): <what changed>
+```
+Examples:
+- `feat(week-1/docker-compose): add postgres + redis containers`
+- `feat(week-1/db-session): async sqlalchemy session factory and base model`
+- `test(week-1/health): integration test for /health with live DB and Redis`
+
+### Week structure in PROGRESS.md
+Each week lists its sections explicitly. Each section has:
+- [ ] Implementation tasks
+- [ ] Tests passing
+- [ ] Committed
+
+If user says "do X", and X spans multiple sections, **break it into sections and confirm before each.**
 
 ---
 

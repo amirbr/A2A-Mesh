@@ -8,47 +8,58 @@
 
 ## Current Status
 
-- **Current week:** Week 0 (project setup)
-- **Last session:** —
-- **Next session goal:** Set up repo, install deps, run first FastAPI hello world
-- **Blockers:** None
+- **Current week:** Week 1 (setup & A2A fundamentals)
+- **Last session:** 2026-06-26
+- **Next session goal:** Week 2 — Echo Agent (Agent Card, message/send, message/stream, tasks/get)
+- **Blockers:** Docker Desktop not installed — need it to run Postgres + Redis for integration tests
 - **Open questions:** None
 
 ---
 
 ## Week 0 — Project Setup (before Week 1)
 
-Started: ____
-Finished: ____
+Started: 2026-06-26
+Finished: 2026-06-26
 
-- [ ] Create GitHub repo `A2A-Mesh`
-- [ ] Clone to local machine
-- [ ] Drop in all docs (CLAUDE.md, PLAN.md, PROGRESS.md, ARCHITECTURE.md, FINANCIAL_PROJECTION.md, README.md)
-- [ ] Initialize Python project with `uv init` or `pyproject.toml`
-- [ ] Install core deps: fastapi, uvicorn, sqlalchemy, asyncpg, pydantic, anthropic, a2a-sdk
-- [ ] Create `.env.example` and `.gitignore`
-- [ ] Create folder structure per CLAUDE.md Section 4
-- [ ] Get Anthropic API key, add to local `.env`
-- [ ] First commit: `chore: initial project setup`
+### Section A: Repo + docs
+- [x] Create GitHub repo `A2A-Mesh`, clone to local
+- [x] Drop in all docs (CLAUDE.md, PLAN.md, PROGRESS.md, ARCHITECTURE.md, FINANCIAL_PROJECTION.md, README.md)
+- [x] Committed: `chore: initial project setup`
+
+### Section B: Python project + deps + folder structure
+- [x] `.gitignore` created
+- [x] `pyproject.toml` — uv 0.11.24, Python 3.11.15, 79 packages installed
+- [x] `.env.example` created
+- [x] Full folder structure per CLAUDE.md §4 — all dirs + `__init__.py` stubs
+- [x] Skeleton files: `main.py`, `config.py`, `logging.py`, `tests/conftest.py`
+- [x] Tests passing: `GET /health → 200`
+- [ ] Get Anthropic API key, add to local `.env` ← **you do this**
+- [ ] Commit: `chore(week-0/python-setup): pyproject.toml, deps, folder structure, health endpoint`
 
 ---
 
 ## Week 1 — Setup & A2A Fundamentals
 
-Started: ____
-Finished: ____
-**Goal:** Working dev environment. Sample A2A agent running on localhost.
+Started: 2026-06-26
+Finished: 2026-06-26
+**Goal:** Working dev environment. FastAPI + Postgres + Redis all connected and tested.
 
-- [ ] Read full A2A v1.0 spec, take notes in `docs/a2a-notes.md`
-- [ ] Clone and run Google's official A2A sample agents
-- [ ] Inspect Agent Card JSON format and JSON-RPC message format
-- [ ] Set up `docker-compose.yml` with Postgres + Redis
-- [ ] Confirm Postgres connection from Python
-- [ ] Confirm Redis connection from Python
-- [ ] Write a "hello world" FastAPI app that returns `{"status": "ok"}`
-- [ ] Set up `ruff`, `mypy`, `pytest` configs in `pyproject.toml`
-- [ ] Run first test
-- **Demo at end of week:** Sample A2A agent running, FastAPI serving on :8000
+### Section A: docker-compose + DB + Redis
+- [x] `docker-compose.yml` — Postgres 15 (port 5435), Redis 7 (port 6379), test DB (port 5436)
+- [x] `db/base.py` — SQLAlchemy DeclarativeBase with `id`/`created_at`/`updated_at`
+- [x] `db/session.py` — async session factory + `get_db` FastAPI dependency
+- [x] `core/redis.py` — async Redis client singleton with shutdown hook
+- [x] `/health` endpoint — returns `{status, db, redis}` with live checks
+- [x] Tests passing: 3/3 including integration (DB + Redis confirmed live)
+- [ ] Commit: `feat(week-1/infra): docker-compose, db session, redis client, /health endpoint`
+
+### Section B: Alembic + A2A spec notes
+- [x] `alembic.ini` + `alembic/env.py` — async Alembic wired to `config.settings`
+- [x] `docs/a2a-notes.md` — Agent Card format, JSON-RPC 2.0, Task lifecycle, all 4 methods, Part types
+- [ ] Commit: `docs(week-1/a2a-spec): alembic setup and a2a protocol notes`
+
+- **Ports note:** System has pgAdmin Postgres 16/18 on 5432/5433 — our containers use 5435/5436/6379
+- **Demo:** `uv run pytest tests/ -v` → 3/3 passing including live DB + Redis
 
 ---
 
@@ -241,9 +252,8 @@ Finished: ____
 
 | Date | Week.Day | What got done | Next |
 |---|---|---|---|
-| _yyyy-mm-dd_ | W0.D1 | _example: created repo, dropped in docs_ | _Install deps_ |
-|  |  |  |  |
-|  |  |  |  |
+| 2026-06-26 | W0.D1 | .gitignore, pyproject.toml, uv+Python 3.11, all deps, folder structure, main.py/config.py/logging.py, first test passing | Week 1 |
+| 2026-06-26 | W1.D1 | docker-compose.yml, alembic setup, db/session.py, db/base.py, core/redis.py, /health with DB+Redis check, docs/a2a-notes.md, 2 tests passing | Install Docker Desktop, then Week 2 (Echo Agent) |
 
 ---
 
