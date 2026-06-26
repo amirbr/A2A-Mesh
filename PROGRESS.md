@@ -34,7 +34,7 @@ Finished: 2026-06-26
 - [x] Skeleton files: `main.py`, `config.py`, `logging.py`, `tests/conftest.py`
 - [x] Tests passing: `GET /health → 200`
 - [ ] Get Anthropic API key, add to local `.env` ← **you do this**
-- [ ] Commit: `chore(week-0/python-setup): pyproject.toml, deps, folder structure, health endpoint`
+- [x] Committed: `chore(week-0/python-setup): pyproject.toml, deps, folder structure, health endpoint`
 
 ---
 
@@ -51,12 +51,12 @@ Finished: 2026-06-26
 - [x] `core/redis.py` — async Redis client singleton with shutdown hook
 - [x] `/health` endpoint — returns `{status, db, redis}` with live checks
 - [x] Tests passing: 3/3 including integration (DB + Redis confirmed live)
-- [ ] Commit: `feat(week-1/infra): docker-compose, db session, redis client, /health endpoint`
+- [x] Committed: `feat(week-1/infra): docker-compose, db session, redis client, /health endpoint`
 
 ### Section B: Alembic + A2A spec notes
 - [x] `alembic.ini` + `alembic/env.py` — async Alembic wired to `config.settings`
 - [x] `docs/a2a-notes.md` — Agent Card format, JSON-RPC 2.0, Task lifecycle, all 4 methods, Part types
-- [ ] Commit: `docs(week-1/a2a-spec): alembic setup and a2a protocol notes`
+- [x] Committed: `docs(week-1/a2a-spec): alembic setup and a2a protocol notes`
 
 - **Ports note:** System has pgAdmin Postgres 16/18 on 5432/5433 — our containers use 5435/5436/6379
 - **Demo:** `uv run pytest tests/ -v` → 3/3 passing including live DB + Redis
