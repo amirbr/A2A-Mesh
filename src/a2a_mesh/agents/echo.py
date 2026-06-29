@@ -7,13 +7,14 @@ from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events.event_queue_v2 import EventQueue
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
-from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
 from a2a.types.a2a_pb2 import (
     AgentCapabilities,
     AgentCard,
     AgentInterface,
     AgentSkill,
 )
+
+from a2a_mesh.db.task_store import PostgresTaskStore
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ def build_echo_routes() -> tuple[list, list]:
         add_a2a_routes_to_fastapi(app, agent_card_routes=card, jsonrpc_routes=rpc)
     """
     agent_card = _build_agent_card()
-    task_store = InMemoryTaskStore()
+    task_store = PostgresTaskStore(agent_id="echo")
     executor = EchoAgentExecutor()
     handler = DefaultRequestHandler(
         agent_executor=executor,

@@ -88,11 +88,16 @@ Finished: ____
 - [x] 11/11 tests passing
 - [ ] Commit: `feat: echo agent wired into main app with agent card and json-rpc`
 
-### Section B: Postgres task storage (next)
-- [ ] DB model for Task
-- [ ] Alembic migration
-- [ ] Custom AsyncTaskStore replacing InMemoryTaskStore
-- [ ] Tests
+### Section B: Postgres task storage
+- [x] `src/a2a_mesh/db/models/task.py` — TaskRecord model (id, context_id, agent_id, state, data as JSON)
+- [x] `alembic/script.py.mako` — migration template (was missing)
+- [x] `alembic/versions/*_create_tasks_table.py` — migration applied to DB
+- [x] `src/a2a_mesh/db/task_store.py` — PostgresTaskStore implementing TaskStore ABC
+- [x] `src/a2a_mesh/agents/echo.py` — switched from InMemoryTaskStore to PostgresTaskStore
+- [x] `src/a2a_mesh/db/session.py` — NullPool in test mode (fixes cross-event-loop asyncpg issues)
+- [x] `tests/conftest.py` — APP_ENV=test set before app import
+- [x] 11/11 tests passing
+- [ ] Commit: `feat: postgres task store, tasks table migration, echo agent persists tasks`
 
 ---
 

@@ -6,6 +6,7 @@ without a .env file. Real secrets are never required in the test suite.
 
 import os
 
+os.environ["APP_ENV"] = "test"  # must be set before app import to activate NullPool
 os.environ.setdefault("APP_SECRET_KEY", "test-secret-key-not-for-production")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://a2a_mesh:password@localhost:5435/a2a_mesh")
 os.environ.setdefault("TEST_DATABASE_URL", "postgresql+asyncpg://a2a_mesh:password@localhost:5436/a2a_mesh_test")
