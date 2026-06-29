@@ -9,7 +9,10 @@ from sqlalchemy.pool import NullPool
 
 from a2a_mesh.config import settings
 from a2a_mesh.db.base import Base
-import a2a_mesh.db.models.task  # noqa: F401 — register TaskRecord with Base.metadata
+import a2a_mesh.db.models.task  # noqa: F401
+import a2a_mesh.db.models.company  # noqa: F401
+import a2a_mesh.db.models.user  # noqa: F401
+import a2a_mesh.db.models.agent  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
