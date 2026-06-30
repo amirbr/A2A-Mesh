@@ -5,11 +5,14 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from a2a.server.routes import add_a2a_routes_to_fastapi
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+import a2a_mesh.db.models  # noqa: F401 — registers all models with SQLAlchemy mapper
 from a2a_mesh.agents.echo import build_echo_routes
+from a2a_mesh.api.v1.auth import router as auth_router
 from a2a_mesh.core.redis import close_redis, get_redis
 from a2a_mesh.db.session import AsyncSessionLocal
 from a2a_mesh.logging import configure_logging
@@ -35,6 +38,14 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Return our error format directly instead of FastAPI's {"detail": ...} wrapper."""
+    return JSONResponse(status_code=exc.status_code, content=exc.detail)
+
+
+app.include_router(auth_router)
 
 # Mount echo agent A2A routes
 _card_routes, _rpc_routes = build_echo_routes()

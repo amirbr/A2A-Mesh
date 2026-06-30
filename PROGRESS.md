@@ -103,23 +103,33 @@ Finished: ____
 
 ## Week 3 — Base Agent SDK + Orchestrator API Skeleton
 
-Started: ____
+Started: 2026-06-29
 Finished: ____
 **Goal:** Reusable BaseAgent class. Control plane API stubs.
 
-- [ ] Set up Postgres tables: companies, users, agents (Alembic migrations)
-- [ ] Implement `BaseAgent` class with lifecycle hooks
-- [ ] Move task storage from memory to Postgres
-- [ ] Implement `POST /v1/auth/register`
-- [ ] Implement `POST /v1/auth/login` (JWT issuance)
-- [ ] Implement `POST /v1/auth/api-keys` (create/list/revoke)
-- [ ] Implement `POST /v1/agents` (CRUD)
-- [ ] Implement `GET /v1/agents`
-- [ ] Implement `GET /v1/agents/{id}`
-- [ ] Implement `PATCH /v1/agents/{id}`
-- [ ] Implement `DELETE /v1/agents/{id}`
-- [ ] Tests for all of the above
-- **Demo at end of week:** Can register a company, create an agent via API
+### Section A: DB models + migrations
+- [x] `core/ids.py` — prefixed ID generators (co_, usr_, agt_, etc.)
+- [x] `db/models/company.py`, `user.py`, `agent.py` — SQLAlchemy models
+- [x] `db/models/__init__.py` — central model registry (fixes SQLAlchemy relationship resolution)
+- [x] Alembic migration: companies, users, agents tables created
+- [x] 21/21 tests passing
+- [ ] Commit: `feat: company, user, agent db models and migration`
+
+### Section B: Auth — register, login, JWT, API keys
+- [x] `core/errors.py` — typed HTTP exceptions (AuthError, NotFoundError, ConflictError, etc.)
+- [x] `core/auth.py` — argon2 password hashing, JWT create/decode, API key generation
+- [x] `db/models/api_key.py` — ApiKey model + migration
+- [x] `api/v1/auth.py` — POST /v1/auth/register, /login, /api-keys (create/list/revoke)
+- [x] `main.py` — custom HTTP exception handler (returns `{"error":...}` directly)
+- [x] `conftest.py` — test DB isolation: uses port 5436, truncates tables between tests
+- [x] 21/21 tests passing
+- [ ] Commit: `feat: auth endpoints — register, login, jwt, api keys`
+
+### Section C: Agent CRUD API (next)
+- [ ] `api/v1/agents.py` — POST/GET/PATCH/DELETE /v1/agents
+
+### Section D: BaseAgent class
+- [ ] `agents/base.py` — BaseAgent ABC with lifecycle hooks
 
 ---
 
