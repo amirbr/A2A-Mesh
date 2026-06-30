@@ -132,7 +132,10 @@ Finished: ____
 - [ ] Commit: `feat: agent crud api — create, list, get, update, delete`
 
 ### Section D: BaseAgent class
-- [ ] `agents/base.py` — BaseAgent ABC with lifecycle hooks
+- [x] `agents/base.py` — BaseAgent(AgentExecutor, ABC) with AgentConfig, SkillConfig, lifecycle hooks (on_start/on_stop/on_error), build_agent_card(), build_routes()
+- [x] `agents/echo.py` — refactored to extend BaseAgent, process() as single override
+- [x] 34/34 tests passing
+- [ ] Commit: `feat: baseagent class with lifecycle hooks and config`
 
 ---
 
