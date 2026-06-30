@@ -125,8 +125,11 @@ Finished: ____
 - [x] 21/21 tests passing
 - [ ] Commit: `feat: auth endpoints — register, login, jwt, api keys`
 
-### Section C: Agent CRUD API (next)
-- [ ] `api/v1/agents.py` — POST/GET/PATCH/DELETE /v1/agents
+### Section C: Agent CRUD API
+- [x] `api/v1/agents.py` — POST/GET/PATCH/DELETE /v1/agents, scoped to company, auth required
+- [x] `tests/test_api/test_agents.py` — 13 tests (create, list, get, update, delete + auth/scope checks)
+- [x] 34/34 tests passing
+- [ ] Commit: `feat: agent crud api — create, list, get, update, delete`
 
 ### Section D: BaseAgent class
 - [ ] `agents/base.py` — BaseAgent ABC with lifecycle hooks

@@ -12,6 +12,7 @@ from sqlalchemy import text
 
 import a2a_mesh.db.models  # noqa: F401 — registers all models with SQLAlchemy mapper
 from a2a_mesh.agents.echo import build_echo_routes
+from a2a_mesh.api.v1.agents import router as agents_router
 from a2a_mesh.api.v1.auth import router as auth_router
 from a2a_mesh.core.redis import close_redis, get_redis
 from a2a_mesh.db.session import AsyncSessionLocal
@@ -46,6 +47,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 
 app.include_router(auth_router)
+app.include_router(agents_router)
 
 # Mount echo agent A2A routes
 _card_routes, _rpc_routes = build_echo_routes()
