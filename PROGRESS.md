@@ -141,19 +141,27 @@ Finished: ____
 
 ## Week 4 — Agent Runtime + Deployment
 
-Started: ____
+Started: 2026-06-30
 Finished: ____
 **Goal:** Agents can be deployed and run dynamically.
+**Decision:** In-process registry (not Docker per agent). Same API surface; Docker-per-agent is post-MVP when we have real workload isolation requirements.
 
-- [ ] Implement `POST /v1/agents/{id}/deploy`
-- [ ] Spin up agents as Docker containers (managed runtime)
-- [ ] Implement `POST /v1/agents/{id}/stop`
-- [ ] Implement `GET /v1/agents/{id}/status` (real health check)
-- [ ] Implement `GET /v1/agents/{id}/logs`
-- [ ] Health check loop / supervisor
-- [ ] Restart on crash
-- [ ] Tests
-- **Demo at end of week:** Deploy Echo Agent dynamically via API, then stop it
+### Section A: Registry + deploy/stop/status/logs endpoints
+- [x] `orchestrator/registry.py` — in-memory agent registry (register/unregister/get/list)
+- [x] `agents/generic.py` — GenericAgent driven by system_prompt config (stub, LLM in Week 5)
+- [x] `api/v1/runtime.py` — POST /v1/agents/{id}/deploy, /stop, GET /status, /logs
+- [x] `main.py` — runtime router registered
+- [x] `tests/test_api/test_runtime.py` — 9 tests covering deploy, stop, status, logs
+- [x] 43/43 tests passing
+- [ ] Commit: `feat: agent runtime — deploy, stop, status endpoints and in-process registry`
+
+### Section B: Dynamic A2A routing + smoke test update
+- [x] `api/a2a/dispatch.py` — POST /a2a/{agent_id}/ (JSON-RPC dispatch), GET /a2a/{agent_id}/.well-known/agent-card.json
+- [x] Route ordering fixed: echo's static routes registered before dynamic dispatch so /a2a/echo/ isn't shadowed
+- [x] `tests/test_api/test_dispatch.py` — 5 tests (not deployed 404, deployed response, unsupported method, agent card)
+- [x] `scripts/smoke_test.sh` — extended with deploy/stop/status/logs/dispatch/agent-card checks
+- [x] 48/48 tests passing
+- [ ] Commit: `feat: dynamic a2a dispatch — deployed agents callable at /a2a/{id}/`
 
 ---
 
