@@ -1,12 +1,12 @@
-"""Agent runtime endpoints — deploy, stop, status, logs."""
+"""Agent runtime endpoints — deploy, stop, status, health, logs, restart."""
 
 import json
 import logging
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from a2a_mesh.agents.base import AgentConfig, SkillConfig
 from a2a_mesh.agents.generic import GenericAgent
@@ -31,6 +31,14 @@ class StatusResponse(BaseModel):
     name: str
     status: str
     endpoint_url: str | None
+
+
+class HealthResponse(BaseModel):
+    id: str
+    name: str
+    healthy: bool
+    status: str
+    latency_ms: float | None
 
 
 class LogEntry(BaseModel):
@@ -64,7 +72,7 @@ def _build_agent_instance(agent: Agent) -> GenericAgent:
             SkillConfig(**s) for s in raw_config.get("skills", [])
         ],
     )
-    return GenericAgent(config)
+    return GenericAgent(config, agent_db_id=agent.id)
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -130,3 +138,74 @@ async def agent_logs(id: str, claims: Claims) -> list[LogEntry]:
     """Return recent logs for an agent (stub — structured logging in Week 8)."""
     await _get_owned_agent(id, claims["company_id"])
     return []
+
+
+@router.get("/{id}/health", response_model=HealthResponse)
+async def agent_health(id: str, claims: Claims) -> HealthResponse:
+    """Ping the agent with a test message and report latency."""
+    agent_record = await _get_owned_agent(id, claims["company_id"])
+    instance = registry.get(id)
+
+    if not instance:
+        return HealthResponse(
+            id=id,
+            name=agent_record.name,
+            healthy=False,
+            status=agent_record.status,
+            latency_ms=None,
+        )
+
+    start = time.monotonic()
+    try:
+        from a2a_mesh.api.a2a.dispatch import _build_context, _parse_message
+        ctx = _build_context(_parse_message({"message": {
+            "messageId": "ping",
+            "role": "ROLE_USER",
+            "parts": [{"text": "__health_ping__"}],
+        }}))
+        await instance.process("__health_ping__", ctx)
+        latency_ms = (time.monotonic() - start) * 1000
+        healthy = True
+    except Exception as exc:
+        latency_ms = (time.monotonic() - start) * 1000
+        healthy = False
+        logger.warning("Health check failed for agent %s: %s", id, exc)
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+                db_agent = await session.get(Agent, id)
+                if db_agent:
+                    db_agent.status = "error"
+
+    return HealthResponse(
+        id=id,
+        name=agent_record.name,
+        healthy=healthy,
+        status="running" if healthy else "error",
+        latency_ms=round(latency_ms, 2),
+    )
+
+
+@router.post("/{id}/restart", response_model=StatusResponse)
+async def restart_agent(id: str, claims: Claims) -> StatusResponse:
+    """Stop and redeploy a crashed or stopped agent."""
+    agent_record = await _get_owned_agent(id, claims["company_id"])
+
+    instance = registry.get(id)
+    if instance:
+        await instance.on_stop()
+        registry.unregister(id)
+
+    new_instance = _build_agent_instance(agent_record)
+    await new_instance.on_start()
+    registry.register(id, new_instance)
+
+    endpoint_url = f"{APP_BASE_URL}/a2a/{id}/"
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            db_agent = await session.get(Agent, id)
+            if db_agent:
+                db_agent.status = "running"
+                db_agent.endpoint_url = endpoint_url
+
+    logger.info("Restarted agent %s", id)
+    return StatusResponse(id=id, name=agent_record.name, status="running", endpoint_url=endpoint_url)

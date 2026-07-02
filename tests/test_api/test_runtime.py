@@ -146,3 +146,75 @@ async def test_logs_returns_empty_list(
     )
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+# ── Health ────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_health_not_deployed_is_unhealthy(
+    client: AsyncClient, auth_token: str, agent_id: str
+) -> None:
+    resp = await client.get(
+        f"/v1/agents/{agent_id}/health",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["healthy"] is False
+    assert data["latency_ms"] is None
+
+
+@pytest.mark.asyncio
+async def test_health_deployed_is_healthy(
+    client: AsyncClient, auth_token: str, agent_id: str
+) -> None:
+    await client.post(
+        f"/v1/agents/{agent_id}/deploy",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    resp = await client.get(
+        f"/v1/agents/{agent_id}/health",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["healthy"] is True
+    assert data["latency_ms"] is not None
+    assert data["latency_ms"] >= 0
+    registry.unregister(agent_id)
+
+
+# ── Restart ───────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_restart_stopped_agent(
+    client: AsyncClient, auth_token: str, agent_id: str
+) -> None:
+    resp = await client.post(
+        f"/v1/agents/{agent_id}/restart",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "running"
+    registry.unregister(agent_id)
+
+
+@pytest.mark.asyncio
+async def test_restart_running_agent_replaces_instance(
+    client: AsyncClient, auth_token: str, agent_id: str
+) -> None:
+    await client.post(
+        f"/v1/agents/{agent_id}/deploy",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    first_instance = registry.get(agent_id)
+
+    await client.post(
+        f"/v1/agents/{agent_id}/restart",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    second_instance = registry.get(agent_id)
+
+    assert second_instance is not None
+    assert second_instance is not first_instance
+    registry.unregister(agent_id)

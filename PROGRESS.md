@@ -163,6 +163,21 @@ Finished: ____
 - [x] 48/48 tests passing
 - [ ] Commit: `feat: dynamic a2a dispatch — deployed agents callable at /a2a/{id}/`
 
+### Section C: Health check endpoint
+- [x] `GET /v1/agents/{id}/health` — pings agent's process(), returns healthy/unhealthy + latency_ms
+- [x] Not-deployed agents return healthy=false, latency_ms=null
+- [x] Failed health check marks agent status as "error" in DB
+- [x] Tests: health not deployed, health deployed
+- [ ] Commit: `feat: agent health check endpoint with latency reporting`
+
+### Section D: Crash recovery — restart endpoint + on_error DB marking
+- [x] `GenericAgent.on_error()` — marks agent status="error" in DB and unregisters from registry on crash
+- [x] `POST /v1/agents/{id}/restart` — stops existing instance (if any), redeploys fresh instance
+- [x] `agent_db_id` threaded through `_build_agent_instance` → `GenericAgent.__init__`
+- [x] Tests: restart stopped agent, restart running agent replaces instance
+- [x] 52/52 tests passing
+- [ ] Commit: `feat: crash recovery — on_error db marking and restart endpoint`
+
 ---
 
 ## Week 5 — Claude Integration + Pipeline Engine
