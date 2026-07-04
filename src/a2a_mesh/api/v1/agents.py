@@ -30,6 +30,13 @@ class CreateAgentRequest(BaseModel):
     version: str = "1.0.0"
     visibility: str = "private"
     runtime: str = "managed"
+    # LLM config (top-level convenience fields)
+    provider: str = "anthropic"
+    model: str = "claude-opus-4-8"
+    system_prompt: str = ""
+    temperature: float = 0.2
+    max_tokens: int = 4096
+    # Advanced: extra config keys (merged on top of the above)
     config: dict = {}  # type: ignore[type-arg]
 
 
@@ -38,6 +45,11 @@ class UpdateAgentRequest(BaseModel):
     description: str | None = None
     version: str | None = None
     visibility: str | None = None
+    provider: str | None = None
+    model: str | None = None
+    system_prompt: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
     config: dict | None = None  # type: ignore[type-arg]
 
 
@@ -90,6 +102,14 @@ async def create_agent(body: CreateAgentRequest, claims: Claims) -> AgentRespons
             if existing.scalar_one_or_none():
                 raise ConflictError(f"Agent '{body.name}' already exists in your company")
 
+            merged_config = {
+                "provider": body.provider,
+                "model": body.model,
+                "system_prompt": body.system_prompt,
+                "temperature": body.temperature,
+                "max_tokens": body.max_tokens,
+                **body.config,
+            }
             agent = Agent(
                 id=agent_id(),
                 company_id=company_id,
@@ -99,7 +119,7 @@ async def create_agent(body: CreateAgentRequest, claims: Claims) -> AgentRespons
                 version=body.version,
                 visibility=body.visibility,
                 runtime=body.runtime,
-                config=json.dumps(body.config),
+                config=json.dumps(merged_config),
                 status="stopped",
             )
             session.add(agent)
@@ -153,8 +173,23 @@ async def update_agent(id: str, body: UpdateAgentRequest, claims: Claims) -> Age
                 agent.version = body.version
             if body.visibility is not None:
                 agent.visibility = body.visibility
-            if body.config is not None:
-                agent.config = json.dumps(body.config)
+
+            # Merge any updated LLM config fields into existing config JSON
+            llm_updates = {
+                k: v for k, v in {
+                    "provider": body.provider,
+                    "model": body.model,
+                    "system_prompt": body.system_prompt,
+                    "temperature": body.temperature,
+                    "max_tokens": body.max_tokens,
+                }.items() if v is not None
+            }
+            if llm_updates or body.config is not None:
+                current = json.loads(agent.config) if agent.config else {}
+                current.update(llm_updates)
+                if body.config is not None:
+                    current.update(body.config)
+                agent.config = json.dumps(current)
 
             await session.flush()
             response = _to_response(agent)

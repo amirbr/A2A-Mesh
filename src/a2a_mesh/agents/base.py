@@ -38,6 +38,7 @@ class AgentConfig(BaseModel):
     display_name: str
     description: str
     version: str = "1.0.0"
+    provider: str = "anthropic"
     model: str = "claude-opus-4-8"
     temperature: float = 0.2
     max_tokens: int = 4096

@@ -44,7 +44,7 @@ These rules override defaults. Follow them strictly.
 - **Cache/queue:** Redis only.
 - **ORM:** SQLAlchemy 2.0 (async).
 - **Migrations:** Alembic.
-- **LLM:** Anthropic Claude API. Default model `claude-opus-4-8`. Ollama for local dev.
+- **LLM:** LiteLLM for multi-provider support. Default provider `anthropic`, model `claude-opus-4-8`. Use `ollama` for local dev. Each agent picks its own `provider` + `model`.
 - **Agent SDK:** Google ADK + `a2a-sdk`. We do NOT reimplement A2A from scratch.
 - **Testing:** pytest + httpx for API tests.
 - **Package manager:** `uv` (preferred) or `pip`.

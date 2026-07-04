@@ -63,7 +63,7 @@
 | Cache / Queue | Redis | 7+ |
 | Validation | Pydantic | v2 |
 | Settings | pydantic-settings | latest |
-| LLM | Claude API (Anthropic) | claude-opus-4-7 default |
+| LLM | LiteLLM | multi-provider (claude-opus-4-8 default, Ollama, OpenAI) |
 | Agent SDK | a2a-sdk, google-adk | latest |
 | Auth | python-jose (JWT), argon2-cffi (passwords) | latest |
 | Testing | pytest, pytest-asyncio, httpx | latest |
@@ -273,7 +273,8 @@ class AuditLog:
 
 ```python
 class AgentConfig(BaseModel):
-    model: str = "claude-opus-4-7"
+    provider: str = "anthropic"    # "anthropic" | "ollama" | "openai"
+    model: str = "claude-opus-4-8"
     temperature: float = 0.2
     max_tokens: int = 4096
     system_prompt: str

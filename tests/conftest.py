@@ -17,12 +17,21 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 import pytest  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
+from unittest.mock import AsyncMock, patch  # noqa: E402
 
 from a2a_mesh.db.session import AsyncSessionLocal  # noqa: E402
 from a2a_mesh.db.base import Base  # noqa: E402
 from a2a_mesh.db.session import engine  # noqa: E402
 import a2a_mesh.db.models  # noqa: F401, E402
 from a2a_mesh.main import app  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def mock_llm() -> None:
+    """Patch LLM dispatch globally so no test makes a real API call."""
+    with patch("a2a_mesh.llm.dispatch.complete", new_callable=AsyncMock) as m:
+        m.return_value = "mocked llm response"
+        yield m
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -38,7 +47,7 @@ async def clean_db() -> None:
     yield
     async with AsyncSessionLocal() as session:
         await session.execute(
-            text("TRUNCATE TABLE api_keys, users, agents, tasks, companies RESTART IDENTITY CASCADE")
+            text("TRUNCATE TABLE api_keys, users, agents, tasks, pipeline_runs, pipelines, companies RESTART IDENTITY CASCADE")
         )
         await session.commit()
 

@@ -54,7 +54,7 @@ The internal use case is the entry point. The cross-company federation is the lo
 | Language | Python 3.11+ |
 | Agent framework | Google ADK + `a2a-sdk` |
 | HTTP server | FastAPI + Uvicorn |
-| LLM | Claude API (Anthropic) |
+| LLM | LiteLLM (multi-provider: Anthropic, Ollama, OpenAI, etc.) |
 | Database | PostgreSQL |
 | Cache / queue | Redis |
 | Auth | JWT + API keys |
@@ -697,11 +697,11 @@ All endpoints require auth. All cross-company traffic is encrypted in transit. S
 - Health checks, logs, restart on crash
 - Status endpoint reports actual state
 
-### Week 5 — Claude Integration + Pipeline Engine
-**Deliverable:** Agents use Claude to think. Pipelines run.
-- Claude API client in `BaseAgent`
+### Week 5 — LLM Integration + Pipeline Engine
+**Deliverable:** Agents call LLMs to think. Pipelines run.
+- LiteLLM multi-provider client (Anthropic, Ollama, OpenAI)
+- Per-agent `provider` + `model` config
 - System prompt config
-- Tool calling support
 - `POST /v1/pipelines` + `POST /v1/pipelines/{id}/run`
 - Sequential pipeline executor
 

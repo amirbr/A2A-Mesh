@@ -1,7 +1,4 @@
-"""GenericAgent — a configurable agent driven by system prompt + LLM.
-
-Week 4: stub response. Week 5: wires in Claude.
-"""
+"""GenericAgent — a configurable agent driven by system prompt + Claude."""
 
 import logging
 
@@ -10,6 +7,7 @@ from a2a.server.agent_execution import RequestContext
 from a2a_mesh.agents.base import BaseAgent
 from a2a_mesh.db.models.agent import Agent
 from a2a_mesh.db.session import AsyncSessionLocal
+from a2a_mesh.llm import dispatch
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +15,8 @@ logger = logging.getLogger(__name__)
 class GenericAgent(BaseAgent):
     """Agent whose behaviour is defined entirely by its system_prompt config.
 
-    Currently returns a placeholder response. Week 5 replaces this with
-    a real Claude API call using self.config.system_prompt.
+    Calls Claude with the configured system prompt and returns the response.
+    Falls back to a stub if no API key is set (useful in tests).
     """
 
     def __init__(self, config, agent_db_id: str | None = None) -> None:  # type: ignore[override]
@@ -28,8 +26,24 @@ class GenericAgent(BaseAgent):
     async def process(self, message: str, context: RequestContext) -> str:
         if not message:
             return "(no input)"
-        # Week 5: return await llm.complete(self.config.system_prompt, message)
-        return f"[{self.config.display_name}] received: {message}"
+
+        try:
+            return await dispatch.complete(
+                provider=self.config.provider,
+                system_prompt=self.config.system_prompt,
+                user_message=message,
+                model=self.config.model,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+            )
+        except Exception as exc:
+            logger.error(
+                "LLM call failed for agent %s (provider=%s): %s",
+                self.config.name,
+                self.config.provider,
+                exc,
+            )
+            raise
 
     async def on_error(self, exc: Exception, user_text: str) -> None:
         """Mark agent as error in DB and unregister from registry on crash."""

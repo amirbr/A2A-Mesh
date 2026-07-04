@@ -182,6 +182,32 @@ Finished: ____
 
 ## Week 5 — Claude Integration + Pipeline Engine
 
+Started: 2026-07-02
+
+### Section A: Claude API wrapper + GenericAgent wired to Claude
+- [x] `llm/claude.py` — async Anthropic wrapper: complete(system_prompt, user_message, model, ...) → str
+- [x] `agents/generic.py` — process() now calls claude.complete() instead of stub
+- [x] `tests/conftest.py` — global `mock_claude` autouse fixture (no test ever hits real API)
+- [x] `tests/test_agents/test_generic_agent.py` — 4 tests (calls claude, empty message, error propagation, system prompt used)
+- [x] 56/56 tests passing
+- [ ] Commit: `feat: claude api wrapper and generic agent wired to claude`
+
+### Section B: Pipeline DB model + CRUD API
+- [x] `db/models/pipeline.py` — Pipeline + PipelineRun models
+- [x] `db/models/__init__.py` — Pipeline + PipelineRun registered
+- [x] Alembic migration: pipelines + pipeline_runs tables created
+- [x] `api/v1/pipelines.py` — POST/GET/PATCH/DELETE /v1/pipelines, scoped to company
+- [x] Tests: create, list, get, update, delete, auth required
+- [ ] Commit: `feat: pipeline crud api and db models`
+
+### Section C: Pipeline executor
+- [x] `orchestrator/engine.py` — run_pipeline(): sequential steps, pipes output to next agent
+- [x] `POST /v1/pipelines/{id}/run` — executes pipeline, returns completed/failed run
+- [x] `GET /v1/pipelines/{id}/runs/{run_id}` — fetch run status and output
+- [x] Tests: success, agent not deployed → failed run, no steps → 422, two-step pipeline, get run status
+- [x] 68/68 tests passing
+- [ ] Commit: `feat: pipeline executor — sequential steps with output chaining`
+
 Started: ____
 Finished: ____
 **Goal:** Agents use Claude to think. Pipelines run.

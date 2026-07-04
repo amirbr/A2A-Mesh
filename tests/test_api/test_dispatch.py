@@ -63,7 +63,7 @@ async def test_dispatch_deployed_returns_response(client: AsyncClient, token_and
     assert "result" in data
     assert "message" in data["result"]
     parts = data["result"]["message"]["parts"]
-    assert any("hello agent" in p.get("text", "") for p in parts)
+    assert any(p.get("text") for p in parts)
     registry.unregister(agent_id)
 
 

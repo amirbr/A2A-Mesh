@@ -15,6 +15,7 @@ from a2a_mesh.agents.echo import build_echo_routes
 from a2a_mesh.api.a2a.dispatch import router as dispatch_router
 from a2a_mesh.api.v1.agents import router as agents_router
 from a2a_mesh.api.v1.auth import router as auth_router
+from a2a_mesh.api.v1.pipelines import router as pipelines_router
 from a2a_mesh.api.v1.runtime import router as runtime_router
 from a2a_mesh.core.redis import close_redis, get_redis
 from a2a_mesh.db.session import AsyncSessionLocal
@@ -51,6 +52,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 app.include_router(auth_router)
 app.include_router(agents_router)
 app.include_router(runtime_router)
+app.include_router(pipelines_router)
 
 # Echo agent routes registered before dispatch so static /a2a/echo/ takes priority
 _card_routes, _rpc_routes = build_echo_routes()

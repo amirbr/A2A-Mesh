@@ -66,11 +66,12 @@ def _build_agent_instance(agent: Agent) -> GenericAgent:
         display_name=agent.display_name,
         description=agent.description,
         version=agent.version,
-        system_prompt=raw_config.get("system_prompt", ""),
+        provider=raw_config.get("provider", "anthropic"),
         model=raw_config.get("model", "claude-opus-4-8"),
-        skills=[
-            SkillConfig(**s) for s in raw_config.get("skills", [])
-        ],
+        temperature=raw_config.get("temperature", 0.2),
+        max_tokens=raw_config.get("max_tokens", 4096),
+        system_prompt=raw_config.get("system_prompt", ""),
+        skills=[SkillConfig(**s) for s in raw_config.get("skills", [])],
     )
     return GenericAgent(config, agent_db_id=agent.id)
 
