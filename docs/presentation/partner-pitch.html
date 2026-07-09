@@ -1,0 +1,528 @@
+<title>A2A-Mesh — Partner Conversation</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --ground:#0c1118;
+    --surface:#141b26;
+    --surface-2:#1a2330;
+    --line:#2a3644;
+    --line-soft:#1f2933;
+    --accent:#e08a3e;
+    --accent-soft:rgba(224,138,62,.14);
+    --accent2:#4fa8a0;
+    --accent2-soft:rgba(79,168,160,.14);
+    --text:#ede7da;
+    --text-dim:#c3c9d1;
+    --muted:#7c8699;
+
+    --f-display:ui-sans-serif,"Helvetica Neue",Arial,sans-serif;
+    --f-body:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+    --f-mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+  }
+
+  html,body{
+    width:100%;height:100%;background:var(--ground);color:var(--text);
+    font-family:var(--f-body);overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ───────────────────────── deck shell ───────────────────────── */
+
+  #deck{position:relative;width:100vw;height:100vh}
+
+  .slide{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    padding:clamp(20px,3.4vw,48px);
+    opacity:0;pointer-events:none;
+    transition:opacity .5s ease;
+  }
+  .slide.active{opacity:1;pointer-events:all}
+  @media (prefers-reduced-motion:reduce){
+    .slide{transition:none}
+  }
+
+  .sheet{
+    position:relative;
+    width:min(1180px,100%);
+    height:min(720px,94vh);
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:clamp(28px,3.6vw,56px) clamp(32px,4.4vw,72px);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* blueprint corner ticks */
+  .sheet::before,.sheet::after,
+  .tick-br,.tick-bl{
+    content:'';position:absolute;width:16px;height:16px;
+    border-color:var(--line);border-style:solid;pointer-events:none;
+  }
+  .sheet::before{top:-1px;left:-1px;border-width:2px 0 0 2px}
+  .sheet::after{top:-1px;right:-1px;border-width:2px 2px 0 0}
+  .tick-bl{bottom:-1px;left:-1px;border-width:0 0 2px 2px}
+  .tick-br{bottom:-1px;right:-1px;border-width:0 2px 2px 0}
+
+  .sheet-frame{position:absolute;inset:10px;border:1px solid var(--line-soft);pointer-events:none;border-radius:2px}
+
+  .sheet-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;
+    color:var(--muted);text-transform:uppercase;
+    padding-bottom:14px;margin-bottom:22px;border-bottom:1px solid var(--line-soft);
+    flex-shrink:0;
+  }
+  .sheet-head .idx{color:var(--accent);font-variant-numeric:tabular-nums}
+
+  .sheet-body{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:18px}
+
+  .eyebrow{
+    font-family:var(--f-mono);font-size:12px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--accent2);
+  }
+
+  h1{
+    font-family:var(--f-display);font-weight:800;letter-spacing:-.02em;
+    text-wrap:balance;line-height:1.04;color:var(--text);
+    font-size:clamp(30px,4.2vw,52px);
+  }
+  h2{
+    font-family:var(--f-display);font-weight:800;letter-spacing:-.015em;
+    text-wrap:balance;line-height:1.1;color:var(--text);
+    font-size:clamp(22px,2.6vw,32px);
+  }
+  p{font-family:var(--f-body);font-size:17px;line-height:1.55;color:var(--text-dim);max-width:62ch}
+  .lede{font-size:20px;line-height:1.5;color:var(--text);max-width:52ch}
+  strong{color:var(--text);font-weight:700}
+  em{color:var(--accent);font-style:normal}
+
+  ul.list{list-style:none;display:flex;flex-direction:column;gap:14px;max-width:66ch}
+  ul.list li{
+    position:relative;padding-left:22px;font-family:var(--f-body);
+    font-size:16.5px;line-height:1.5;color:var(--text-dim);
+  }
+  ul.list li::before{
+    content:'';position:absolute;left:0;top:.55em;width:8px;height:1px;background:var(--accent);
+  }
+  ul.list li strong{color:var(--text)}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid-4{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+
+  .card{
+    border:1px solid var(--line);background:var(--surface-2);border-radius:3px;
+    padding:16px 18px;display:flex;flex-direction:column;gap:8px;
+  }
+  .card .tag{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;color:var(--accent);text-transform:uppercase}
+  .card h3{font-family:var(--f-display);font-weight:700;font-size:16.5px;color:var(--text)}
+  .card p{font-size:14.5px;line-height:1.48;color:var(--muted);max-width:none}
+  .card p em{color:var(--accent2)}
+
+  .foot-note{
+    font-family:var(--f-mono);font-size:11.5px;color:var(--muted);
+    padding-top:16px;margin-top:auto;border-top:1px solid var(--line-soft);flex-shrink:0;
+  }
+
+  code{font-family:var(--f-mono);font-size:.92em;color:var(--accent2)}
+
+  /* ───────────────────────── cover ───────────────────────── */
+
+  #s0 .sheet{align-items:center;text-align:center;justify-content:center}
+  #s0 canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+  #s0 .cover-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:22px}
+  #s0 .eyebrow{color:var(--accent2)}
+  #s0 h1{font-size:clamp(46px,8vw,96px);letter-spacing:-.03em}
+  #s0 .lede{max-width:44ch;text-align:center;color:var(--text-dim)}
+  #s0 .mark{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+
+  /* ───────────────────────── diagram slide ───────────────────────── */
+
+  .diagram{display:flex;align-items:center;gap:0;flex:1}
+  .cluster{
+    flex:1;border:1px solid var(--line);border-radius:4px;background:var(--surface-2);
+    padding:20px;display:flex;flex-direction:column;gap:10px;
+  }
+  .cluster .label{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+  .node{
+    border:1px solid var(--line);border-radius:3px;background:var(--ground);
+    padding:10px 14px;font-family:var(--f-display);font-weight:700;font-size:14.5px;color:var(--text);
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+  }
+  .node .dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);flex-shrink:0}
+  .node.internal .dot{background:var(--accent)}
+  .arrow-down{align-self:center;color:var(--muted);font-family:var(--f-mono);font-size:14px}
+
+  .bridge{
+    flex-shrink:0;width:min(220px,16vw);display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:0 8px;position:relative;
+  }
+  .bridge .line{width:100%;height:1px;background:repeating-linear-gradient(90deg,var(--accent2) 0 6px,transparent 6px 11px)}
+  .bridge .tag{font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;color:var(--accent2);text-align:center;text-transform:uppercase}
+
+  /* ───────────────────────── nav ───────────────────────── */
+
+  #nav{
+    position:fixed;left:0;right:0;bottom:18px;display:flex;justify-content:center;
+    align-items:center;gap:14px;z-index:10;font-family:var(--f-mono);
+  }
+  #nav button{
+    width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+    background:var(--surface);color:var(--text-dim);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-size:15px;
+    transition:border-color .2s,color .2s;
+  }
+  #nav button:hover{border-color:var(--accent);color:var(--accent)}
+  #nav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  #dots{display:flex;gap:7px}
+  #dots .d{width:6px;height:6px;border-radius:50%;background:var(--line);cursor:pointer;transition:background .2s,transform .2s}
+  #dots .d.on{background:var(--accent);transform:scale(1.3)}
+  #dots .d:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  #counter{font-size:11px;color:var(--muted);letter-spacing:.08em;min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
+
+  @media (max-width:760px){
+    .grid-2,.grid-4{grid-template-columns:1fr}
+    .diagram{flex-direction:column}
+    .bridge{width:100%;flex-direction:row;padding:8px 0}
+    .bridge .line{height:1px;width:100%}
+  }
+</style>
+
+<div id="deck">
+
+  <section class="slide active" id="s0">
+    <div class="sheet">
+      <div class="sheet-frame"></div>
+      <canvas id="mesh"></canvas>
+      <div class="cover-inner">
+        <div class="eyebrow">An A2A-native control plane</div>
+        <h1>A2A&#8209;MESH</h1>
+        <p class="lede">Every company is wiring together AI agents right now. None of those wires connect to each other &mdash; inside one company, or between two.</p>
+        <div class="mark">Prepared for a conversation, not a pitch deck &middot; July 2026</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="s1">
+    <div class="sheet">
+      <div class="sheet-frame"></div><div class="tick-bl"></div><div class="tick-br"></div>
+      <div class="sheet-head"><span><span class="idx">02</span> / 09</span><span>The Problem</span></div>
+      <div class="sheet-body">
+        <div class="eyebrow">Why this needs to exist</div>
+        <h2>Agents are multiplying. Nothing connects them.</h2>
+        <ul class="list">
+          <li><strong>Every team is standing up agents</strong> &mdash; for coding, review, support, data &mdash; with no shared way to run, chain, or monitor them.</li>
+          <li><strong>Two agents from two different vendors can't hand off a task.</strong> There's no common wire format for "here, you finish this."</li>
+          <li><strong>Two agents from two different companies definitely can't.</strong> There's no discovery, no trust model, no auth pattern for that &mdash; it doesn't exist yet, anywhere.</li>
+          <li>So the same orchestration plumbing gets rebuilt, badly, inside every company that tries this. <em>Nobody is solving the connective layer.</em></li>
+        </ul>
+      </div>
+      <div class="foot-note">A2A-MESH &middot; PARTNER CONVERSATION</div>
+    </div>
+  </section>
+
+  <section class="slide" id="s2">
+    <div class="sheet">
+      <div class="sheet-frame"></div><div class="tick-bl"></div><div class="tick-br"></div>
+      <div class="sheet-head"><span><span class="idx">03</span> / 09</span><span>The Idea</span></div>
+      <div class="sheet-body">
+        <div class="eyebrow">What A2A-Mesh actually is</div>
+        <h2>The switchboard AI agents don't have yet.</h2>
+        <div class="grid-4" style="margin-top:6px">
+          <div class="card">
+            <div class="tag">Build</div>
+            <h3>Define, deploy in minutes</h3>
+            <p>Register an agent with a prompt, a model, a config. It comes up live behind a real A2A endpoint &mdash; no glue code.</p>
+          </div>
+          <div class="card">
+            <div class="tag">Orchestrate</div>
+            <h3>Chain agents into pipelines</h3>
+            <p>One agent's output flows into the next automatically, with loops and conditions built into the engine.</p>
+          </div>
+          <div class="card" style="grid-column:1/-1;border-color:var(--accent2)">
+            <div class="tag" style="color:var(--accent2)">Federate &mdash; the one that matters</div>
+            <h3>Call another company's agents</h3>
+            <p>Your agents discover and call a partner company's agents under a trust relationship <em>you</em> define, rate-limit, and can revoke. This is why it's a platform, not a tool.</p>
+          </div>
+        </div>
+      </div>
+      <div class="foot-note">A2A-MESH &middot; PARTNER CONVERSATION</div>
+    </div>
+  </section>
+
+  <section class="slide" id="s3">
+    <div class="sheet">
+      <div class="sheet-frame"></div><div class="tick-bl"></div><div class="tick-br"></div>
+      <div class="sheet-head"><span><span class="idx">04</span> / 09</span><span>How It Works</span></div>
+      <div class="sheet-body">
+        <div class="eyebrow">One protocol, two sides of a trust boundary</div>
+        <h2 style="margin-bottom:4px">A pipeline inside your walls. A call across someone else's.</h2>
+        <div class="diagram">
+          <div class="cluster">
+            <div class="label">Your Company</div>
+            <div class="node internal"><span>Coder Agent</span><span class="dot"></span></div>
+            <div class="arrow-down">&#8595;</div>
+            <div class="node internal"><span>Reviewer Agent</span><span class="dot"></span></div>
+            <div class="arrow-down">&#8595;</div>
+            <div class="node internal"><span>Jira Agent</span><span class="dot"></span></div>
+          </div>
+          <div class="bridge">
+            <div class="line"></div>
+            <div class="tag">Federated trust<br>signed JWT &middot; rate-limited &middot; audited</div>
+            <div class="line"></div>
+          </div>
+          <div class="cluster">
+            <div class="label">Partner Company</div>
+            <div class="node"><span>Their Review Agent</span><span class="dot"></span></div>
+          </div>
+        </div>
+        <p style="font-size:14.5px;color:var(--muted);max-width:none">The Reviewer step can call a specialist agent that lives entirely on the partner's infrastructure &mdash; same call shape, full audit trail on both sides, no custom integration written for that one relationship.</p>
+      </div>
+      <div class="foot-note">A2A-MESH &middot; PARTNER CONVERSATION</div>
+    </div>
+  </section>
+
+  <section class="slide" id="s4">
+    <div class="sheet">
+      <div class="sheet-frame"></div><div class="tick-bl"></div><div class="tick-br"></div>
+      <div class="sheet-head"><span><span class="idx">05</span> / 09</span><span>Who Needs This</span></div>
+      <div class="sheet-body">
+        <div class="eyebrow">Who actually reaches for it</div>
+        <h2>Four buyers, one shape of pain.</h2>
+        <div class="grid-2" style="margin-top:6px">
+          <div class="card">
+            <div class="tag">Dev teams</div>
+            <h3>Running 3+ internal agents already</h3>
+            <p>They're gluing coder, reviewer, and ticketing bots together by hand with cron jobs and webhooks. <em>Mesh replaces the glue.</em></p>
+          </div>
+          <div class="card">
+            <div class="tag">Agencies &amp; consultancies</div>
+            <h3>Building agents for many clients</h3>
+            <p>Every client gets a one-off deployment today. <em>Mesh gives them one control plane</em> instead of N bespoke stacks.</p>
+          </div>
+          <div class="card">
+            <div class="tag">Platform &amp; SaaS companies</div>
+            <h3>Want to expose "an agent," not an API</h3>
+            <p>Their customers are building agents too. <em>Mesh lets them plug in as a node</em> instead of shipping another REST integration.</p>
+          </div>
+          <div class="card">
+            <div class="tag">Multi-org enterprises</div>
+            <h3>Post-merger, or deep vendor ecosystems</h3>
+            <p>Two orgs' AI systems need to talk with an audit trail and a kill switch. <em>Mesh is the trust layer</em> instead of a custom integration project.</p>
+          </div>
+        </div>
+      </div>
+      <div class="foot-note">A2A-MESH &middot; PARTNER CONVERSATION</div>
+    </div>
+  </section>
+
+  <section class="slide" id="s5">
+    <div class="sheet">
+      <div class="sheet-frame"></div><div class="tick-bl"></div><div class="tick-br"></div>
+      <div class="sheet-head"><span><span class="idx">06</span> / 09</span><span>Why Now</span></div>
+      <div class="sheet-body">
+        <div class="eyebrow">Three forces landing at once</div>
+        <h2>Being A2A-native today is being HTTP-native in 1995.</h2>
+        <ul class="list">
+          <li><strong>Models are finally good enough to do real work.</strong> Claude, GPT, Gemini can carry a task end to end. The gap left is orchestration and connectivity &mdash; not raw capability.</li>
+          <li><strong>A2A is becoming the shared standard,</strong> not a protocol we're inventing ourselves. Google published it; major platforms are converging on it. We're building on the rails, not laying our own track.</li>
+          <li><strong>Cross-company AI collaboration is untouched.</strong> Every company is building its AI stack in total isolation. Nobody has shipped the layer where two companies' agents safely talk.</li>
+        </ul>
+        <p style="margin-top:4px">This is an infrastructure bet, timed to a standard that's still being written. That window doesn't stay open long.</p>
+      </div>
+      <div class="foot-note">A2A-MESH &middot; PARTNER CONVERSATION</div>
+    </div>
+  </section>
+
+  <section class="slide" id="s6">
+    <div class="sheet">
+      <div class="sheet-frame"></div><div class="tick-bl"></div><div class="tick-br"></div>
+      <div class="sheet-head"><span><span class="idx">07</span> / 09</span><span>The Potential</span></div>
+      <div class="sheet-body">
+        <div class="eyebrow">Why the value compounds instead of sitting still</div>
+        <h2>Federation is a network effect.</h2>
+        <p class="lede">Every company that joins the mesh makes it more useful to the next one that joins &mdash; the same dynamic that made Twilio's phone network, and Stripe's payment network, worth more than the sum of their APIs.</p>
+        <div class="grid-2" style="margin-top:4px">
+          <div class="card">
+            <div class="tag">Year 1</div>
+            <h3>~5 design partners</h3>
+            <p>Personal network, hands-on, proving the internal pipeline end to end.</p>
+          </div>
+          <div class="card">
+            <div class="tag">Year 5, modeled</div>
+            <h3>~1,400 customers &middot; $9M ARR</h3>
+            <p>From my own 5-year financial model &mdash; a plan, not a promise. Full breakdown in <code>FINANCIAL_PROJECTION.md</code>.</p>
+          </div>
+        </div>
+        <p style="font-size:14.5px;color:var(--muted);max-width:none">The SaaS fees are the visible business. The real prize is owning the trust layer that sits between company AI systems &mdash; whoever builds that first is hard to route around.</p>
+      </div>
+      <div class="foot-note">A2A-MESH &middot; PARTNER CONVERSATION</div>
+    </div>
+  </section>
+
+  <section class="slide" id="s7">
+    <div class="sheet">
+      <div class="sheet-frame"></div><div class="tick-bl"></div><div class="tick-br"></div>
+      <div class="sheet-head"><span><span class="idx">08</span> / 09</span><span>Where We Are</span></div>
+      <div class="sheet-body">
+        <div class="eyebrow">Two weeks in. Honest about it.</div>
+        <h2>What's real today &mdash; and what's next.</h2>
+        <p class="lede">No UI. No pricing page. No funding. What exists: a live A2A-compliant agent &mdash; agent card, JSON-RPC message handling, task state persisted in Postgres &mdash; plus Docker Compose infra and the full A2A spec absorbed and tested against Google's own samples.</p>
+        <div class="grid-4" style="margin-top:2px">
+          <div class="card"><div class="tag">Weeks 1&ndash;2 &middot; done</div><h3>Foundations</h3><p>A2A protocol, Postgres/Redis, first working agent.</p></div>
+          <div class="card"><div class="tag">Weeks 3&ndash;5</div><h3>Orchestrator + runtime</h3><p>Agent CRUD, deploy/health, pipeline engine.</p></div>
+          <div class="card"><div class="tag">Weeks 6&ndash;8</div><h3>Real pipeline</h3><p>Coder &rarr; Reviewer &rarr; Jira, end to end.</p></div>
+          <div class="card"><div class="tag">Weeks 9&ndash;12</div><h3>Federation + hardening</h3><p>Cross-company trust, auth, observability, deploy.</p></div>
+        </div>
+      </div>
+      <div class="foot-note">A2A-MESH &middot; PARTNER CONVERSATION</div>
+    </div>
+  </section>
+
+  <section class="slide" id="s8">
+    <div class="sheet">
+      <div class="sheet-frame"></div><div class="tick-bl"></div><div class="tick-br"></div>
+      <div class="sheet-head"><span><span class="idx">09</span> / 09</span><span>The Invitation</span></div>
+      <div class="sheet-body" style="justify-content:center;gap:22px">
+        <div class="eyebrow">Where you'd come in</div>
+        <h1 style="font-size:clamp(28px,4vw,44px)">Build the trust layer with me.</h1>
+        <p class="lede">I'm not hiring for a role &mdash; I'm looking for someone who wants to own the hard half of this problem alongside me. Everything past week 2 is still an open architecture decision: the orchestrator, the federation trust model, all of it.</p>
+        <div style="display:flex;gap:28px;flex-wrap:wrap;font-family:var(--f-mono);font-size:13px;color:var(--text-dim)">
+          <span>amirbr5027@gmail.com</span>
+          <span style="color:var(--muted)">github.com/amirbr/A2A-Mesh</span>
+        </div>
+      </div>
+      <div class="foot-note">Confidential &middot; prepared for a conversation, not a pitch competition.</div>
+    </div>
+  </section>
+
+</div>
+
+<div id="nav">
+  <button id="prev" aria-label="Previous slide">&#8592;</button>
+  <div id="dots"></div>
+  <span id="counter">01/09</span>
+  <button id="next" aria-label="Next slide">&#8594;</button>
+</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var dotsWrap = document.getElementById('dots');
+  var counter = document.getElementById('counter');
+  var cur = 0;
+
+  slides.forEach(function(_, i){
+    var d = document.createElement('div');
+    d.className = 'd' + (i===0 ? ' on' : '');
+    d.setAttribute('role','button');
+    d.setAttribute('tabindex','0');
+    d.setAttribute('aria-label','Go to slide ' + (i+1));
+    d.addEventListener('click', function(){ go(i); });
+    d.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ go(i); } });
+    dotsWrap.appendChild(d);
+  });
+  var dots = Array.prototype.slice.call(dotsWrap.children);
+
+  function go(i){
+    if(i<0 || i>=slides.length) return;
+    slides[cur].classList.remove('active');
+    dots[cur].classList.remove('on');
+    cur = i;
+    slides[cur].classList.add('active');
+    dots[cur].classList.add('on');
+    counter.textContent = String(cur+1).padStart(2,'0') + '/' + String(slides.length).padStart(2,'0');
+  }
+
+  document.getElementById('prev').addEventListener('click', function(){ go(cur-1); });
+  document.getElementById('next').addEventListener('click', function(){ go(cur+1); });
+  window.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight' || e.key===' '){ go(cur+1); }
+    else if(e.key==='ArrowLeft'){ go(cur-1); }
+  });
+
+  // ── mesh network canvas (cover slide only) ──
+  var canvas = document.getElementById('mesh');
+  var ctx = canvas.getContext('2d');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var W, H, nodes = [], DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var CLUSTER_GAP = 0;
+
+  function resize(){
+    var rect = canvas.parentElement.getBoundingClientRect();
+    W = rect.width; H = rect.height;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    buildNodes();
+  }
+
+  function buildNodes(){
+    nodes = [];
+    var count = W < 700 ? 16 : 26;
+    for(var i=0;i<count;i++){
+      nodes.push({
+        x: Math.random()*W, y: Math.random()*H,
+        vx: (Math.random()-0.5)*0.18, vy: (Math.random()-0.5)*0.18,
+        r: Math.random()<0.18 ? 2.6 : 1.6,
+        hub: Math.random()<0.18
+      });
+    }
+  }
+
+  function step(){
+    nodes.forEach(function(n){
+      n.x += n.vx; n.y += n.vy;
+      if(n.x < 0 || n.x > W) n.vx *= -1;
+      if(n.y < 0 || n.y > H) n.vy *= -1;
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    var linkDist = W < 700 ? 130 : 170;
+    for(var i=0;i<nodes.length;i++){
+      for(var j=i+1;j<nodes.length;j++){
+        var a=nodes[i], b=nodes[j];
+        var dx=a.x-b.x, dy=a.y-b.y;
+        var d=Math.sqrt(dx*dx+dy*dy);
+        if(d < linkDist){
+          var alpha = (1 - d/linkDist) * 0.35;
+          var accentEdge = (a.hub || b.hub);
+          ctx.strokeStyle = accentEdge
+            ? 'rgba(224,138,62,' + (alpha*1.3) + ')'
+            : 'rgba(79,168,160,' + alpha + ')';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+          ctx.stroke();
+        }
+      }
+    }
+    nodes.forEach(function(n){
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.fillStyle = n.hub ? '#e08a3e' : '#4fa8a0';
+      ctx.globalAlpha = n.hub ? 0.9 : 0.55;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function loop(){
+    step(); draw();
+    if(!reduceMotion) requestAnimationFrame(loop);
+  }
+
+  if(canvas){
+    resize();
+    draw();
+    if(!reduceMotion) requestAnimationFrame(loop);
+    window.addEventListener('resize', resize);
+  }
+})();
+</script>
