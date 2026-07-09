@@ -705,11 +705,19 @@ All endpoints require auth. All cross-company traffic is encrypted in transit. S
 - `POST /v1/pipelines` + `POST /v1/pipelines/{id}/run`
 - Sequential pipeline executor
 
-### Week 6 — Coder Agent
-**Deliverable:** A real agent that writes code from prompts.
+### Week 6 — Coder Agent + Tool Use (built-in tools + MCP)
+**Deliverable:** A real agent that writes code from prompts, via a tool-calling loop that any
+agent can use — including agents that call out to external MCP servers (e.g. Jira, GitHub).
+- Tool-calling loop added to the LLM dispatch layer (LiteLLM function-calling)
+- `AgentConfig` gains `tools: list[str]` (built-in) and `mcp_servers: list[str]` (external) —
+  these fields have been in the documented schema since Week 0 but were never wired up
 - Coder system prompt
-- Tools: `file_read`, `file_write`, `run_tests`, `git_diff`
+- Built-in tools: `file_read`, `file_write`, `run_tests`, `git_diff`
+- MCP client integration (library choice — official `mcp` SDK vs. hand-rolled — decided at start
+  of week, needs sign-off before adding to `pyproject.toml`) so an agent's `mcp_servers` list
+  resolves into callable tools through the same loop as built-ins
 - Test on real task: "add a Flask login endpoint"
+- Test a second agent calling a tool on a local mock MCP server end to end
 
 ### Week 7 — Reviewer Agent + Loop Logic
 **Deliverable:** 2-agent pipeline with feedback loop.

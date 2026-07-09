@@ -8,11 +8,12 @@
 
 ## Current Status
 
-- **Current week:** Week 1 (setup & A2A fundamentals)
-- **Last session:** 2026-06-26
-- **Next session goal:** Week 2 — Echo Agent (Agent Card, message/send, message/stream, tasks/get)
-- **Blockers:** Docker Desktop not installed — need it to run Postgres + Redis for integration tests
-- **Open questions:** None
+- **Current week:** Week 6 (Coder Agent + Tool Use — not started)
+- **Last session:** 2026-07-04
+- **Next session goal:** Week 6 — Coder agent, built-in tools, and MCP client support (see Week 6 below)
+- **Blockers:** None known. Docker daemon must be running locally before integration tests (`docker compose up`).
+- **Open questions:** MCP client — use the official `mcp` Python SDK (needs adding to `pyproject.toml`, requires sign-off per CLAUDE.md §3.2) vs. a minimal hand-rolled JSON-RPC client. Decide at the start of Week 6.
+- **Doc note (2026-07-09):** Weeks 1–5 checkboxes below were back-filled from `git log` — this file wasn't updated after Week 2 for a while even though the work kept shipping. Keep it current going forward.
 
 ---
 
@@ -66,7 +67,7 @@ Finished: 2026-06-26
   - `POST /` with `SendMessage` (JSON-RPC, `A2A-Version: 1.0` header) — echoes back text
   - Key learnings: method is `SendMessage` not `message/send`; agent card at `/.well-known/agent-card.json`; `Message` response for immediate replies
 - [x] Tests: 3/3 passing
-- [ ] Commit: `feat: postgres/redis connection verification and a2a echo sample`
+- [x] Committed: `28346b0 feat: postgres/redis connection verification and a2a echo sample`
 
 - **Ports note:** System has pgAdmin Postgres 16/18 on 5432/5433 — our containers use 5435/5436/6379
 - **Demo:** `uv run pytest tests/ -v` → 3/3; `uv run python scripts/run_echo_sample.py` → live A2A agent
@@ -86,7 +87,7 @@ Finished: ____
 - [x] `POST /a2a/echo/` — SendMessage (JSON-RPC, A2A-Version: 1.0)
 - [x] `tests/test_api/test_echo_agent.py` — 8 tests (agent card + send message happy/error paths)
 - [x] 11/11 tests passing
-- [ ] Commit: `feat: echo agent wired into main app with agent card and json-rpc`
+- [x] Committed: `9420005 feat: echo agent wired into main app with agent card and json-rpc`
 
 ### Section B: Postgres task storage
 - [x] `src/a2a_mesh/db/models/task.py` — TaskRecord model (id, context_id, agent_id, state, data as JSON)
@@ -97,14 +98,14 @@ Finished: ____
 - [x] `src/a2a_mesh/db/session.py` — NullPool in test mode (fixes cross-event-loop asyncpg issues)
 - [x] `tests/conftest.py` — APP_ENV=test set before app import
 - [x] 11/11 tests passing
-- [ ] Commit: `feat: postgres task store, tasks table migration, echo agent persists tasks`
+- [x] Committed: `b841cce feat: postgres task store, tasks table migration, echo agent persists tasks`
 
 ---
 
 ## Week 3 — Base Agent SDK + Orchestrator API Skeleton
 
 Started: 2026-06-29
-Finished: ____
+Finished: 2026-06-30
 **Goal:** Reusable BaseAgent class. Control plane API stubs.
 
 ### Section A: DB models + migrations
@@ -113,7 +114,7 @@ Finished: ____
 - [x] `db/models/__init__.py` — central model registry (fixes SQLAlchemy relationship resolution)
 - [x] Alembic migration: companies, users, agents tables created
 - [x] 21/21 tests passing
-- [ ] Commit: `feat: company, user, agent db models and migration`
+- [x] Committed: `14cc943 feat: company, user, agent db models and migration`
 
 ### Section B: Auth — register, login, JWT, API keys
 - [x] `core/errors.py` — typed HTTP exceptions (AuthError, NotFoundError, ConflictError, etc.)
@@ -123,26 +124,26 @@ Finished: ____
 - [x] `main.py` — custom HTTP exception handler (returns `{"error":...}` directly)
 - [x] `conftest.py` — test DB isolation: uses port 5436, truncates tables between tests
 - [x] 21/21 tests passing
-- [ ] Commit: `feat: auth endpoints — register, login, jwt, api keys`
+- [x] Committed: `649a929 feat: auth endpoints — register, login, jwt, api keys`
 
 ### Section C: Agent CRUD API
 - [x] `api/v1/agents.py` — POST/GET/PATCH/DELETE /v1/agents, scoped to company, auth required
 - [x] `tests/test_api/test_agents.py` — 13 tests (create, list, get, update, delete + auth/scope checks)
 - [x] 34/34 tests passing
-- [ ] Commit: `feat: agent crud api — create, list, get, update, delete`
+- [x] Committed: `bf5559a feat: agent crud api — create, list, get, update, delete`
 
 ### Section D: BaseAgent class
 - [x] `agents/base.py` — BaseAgent(AgentExecutor, ABC) with AgentConfig, SkillConfig, lifecycle hooks (on_start/on_stop/on_error), build_agent_card(), build_routes()
 - [x] `agents/echo.py` — refactored to extend BaseAgent, process() as single override
 - [x] 34/34 tests passing
-- [ ] Commit: `feat: baseagent class with lifecycle hooks and config`
+- [x] Committed: `e14ed0d feat: baseagent class with lifecycle hooks and config`
 
 ---
 
 ## Week 4 — Agent Runtime + Deployment
 
 Started: 2026-06-30
-Finished: ____
+Finished: 2026-07-02
 **Goal:** Agents can be deployed and run dynamically.
 **Decision:** In-process registry (not Docker per agent). Same API surface; Docker-per-agent is post-MVP when we have real workload isolation requirements.
 
@@ -153,7 +154,7 @@ Finished: ____
 - [x] `main.py` — runtime router registered
 - [x] `tests/test_api/test_runtime.py` — 9 tests covering deploy, stop, status, logs
 - [x] 43/43 tests passing
-- [ ] Commit: `feat: agent runtime — deploy, stop, status endpoints and in-process registry`
+- [x] Committed: `dada1c2 feat: agent runtime and dynamic a2a dispatch`
 
 ### Section B: Dynamic A2A routing + smoke test update
 - [x] `api/a2a/dispatch.py` — POST /a2a/{agent_id}/ (JSON-RPC dispatch), GET /a2a/{agent_id}/.well-known/agent-card.json
@@ -161,14 +162,14 @@ Finished: ____
 - [x] `tests/test_api/test_dispatch.py` — 5 tests (not deployed 404, deployed response, unsupported method, agent card)
 - [x] `scripts/smoke_test.sh` — extended with deploy/stop/status/logs/dispatch/agent-card checks
 - [x] 48/48 tests passing
-- [ ] Commit: `feat: dynamic a2a dispatch — deployed agents callable at /a2a/{id}/`
+- [x] Committed: `dada1c2 feat: agent runtime and dynamic a2a dispatch` (same commit as Section A)
 
 ### Section C: Health check endpoint
 - [x] `GET /v1/agents/{id}/health` — pings agent's process(), returns healthy/unhealthy + latency_ms
 - [x] Not-deployed agents return healthy=false, latency_ms=null
 - [x] Failed health check marks agent status as "error" in DB
 - [x] Tests: health not deployed, health deployed
-- [ ] Commit: `feat: agent health check endpoint with latency reporting`
+- [x] Committed: `8414dd2 feat: week 4 agent runtime — deploy, stop, health, restart, dynamic a2a dispatch`
 
 ### Section D: Crash recovery — restart endpoint + on_error DB marking
 - [x] `GenericAgent.on_error()` — marks agent status="error" in DB and unregisters from registry on crash
@@ -176,13 +177,15 @@ Finished: ____
 - [x] `agent_db_id` threaded through `_build_agent_instance` → `GenericAgent.__init__`
 - [x] Tests: restart stopped agent, restart running agent replaces instance
 - [x] 52/52 tests passing
-- [ ] Commit: `feat: crash recovery — on_error db marking and restart endpoint`
+- [x] Committed: `8414dd2 feat: week 4 agent runtime — deploy, stop, health, restart, dynamic a2a dispatch` (same commit as Section C)
 
 ---
 
-## Week 5 — Claude Integration + Pipeline Engine
+## Week 5 — LLM Integration + Pipeline Engine
 
 Started: 2026-07-02
+Finished: 2026-07-04
+**Goal:** Agents use an LLM to think. Pipelines run.
 
 ### Section A: Claude API wrapper + GenericAgent wired to Claude
 - [x] `llm/claude.py` — async Anthropic wrapper: complete(system_prompt, user_message, model, ...) → str
@@ -190,7 +193,7 @@ Started: 2026-07-02
 - [x] `tests/conftest.py` — global `mock_claude` autouse fixture (no test ever hits real API)
 - [x] `tests/test_agents/test_generic_agent.py` — 4 tests (calls claude, empty message, error propagation, system prompt used)
 - [x] 56/56 tests passing
-- [ ] Commit: `feat: claude api wrapper and generic agent wired to claude`
+- [x] Committed as part of `4cabbbf` (see Section D — superseded same day, see note below)
 
 ### Section B: Pipeline DB model + CRUD API
 - [x] `db/models/pipeline.py` — Pipeline + PipelineRun models
@@ -198,7 +201,7 @@ Started: 2026-07-02
 - [x] Alembic migration: pipelines + pipeline_runs tables created
 - [x] `api/v1/pipelines.py` — POST/GET/PATCH/DELETE /v1/pipelines, scoped to company
 - [x] Tests: create, list, get, update, delete, auth required
-- [ ] Commit: `feat: pipeline crud api and db models`
+- [x] Committed as part of `4cabbbf`
 
 ### Section C: Pipeline executor
 - [x] `orchestrator/engine.py` — run_pipeline(): sequential steps, pipes output to next agent
@@ -206,36 +209,59 @@ Started: 2026-07-02
 - [x] `GET /v1/pipelines/{id}/runs/{run_id}` — fetch run status and output
 - [x] Tests: success, agent not deployed → failed run, no steps → 422, two-step pipeline, get run status
 - [x] 68/68 tests passing
-- [ ] Commit: `feat: pipeline executor — sequential steps with output chaining`
+- [x] Committed as part of `4cabbbf`
 
-Started: ____
-Finished: ____
-**Goal:** Agents use Claude to think. Pipelines run.
+### Section D: LiteLLM multi-provider dispatch (replaces Section A's Claude-only wrapper)
+- [x] `llm/dispatch.py` — replaces `llm/claude.py`; unified `complete()` over LiteLLM
+- [x] Supports `provider: "anthropic" | "ollama" | "openai"` — any LiteLLM-supported provider works by passing the right `provider`/`model` string, no code changes needed
+- [x] `agents/generic.py` — now calls `dispatch.complete()` instead of `claude.complete()`
+- [x] Tests updated to mock `litellm.acompletion`
+- [x] Committed: `4cabbbf feat: litellm multi-provider dispatch replacing claude and ollama wrappers`
 
-- [ ] Implement `llm/claude.py` — Anthropic API wrapper
-- [ ] Add Claude client to `BaseAgent` (system prompt, model config)
-- [ ] Add tool calling support
-- [ ] Token usage + cost tracking per task
-- [ ] Implement `POST /v1/pipelines` (CRUD)
-- [ ] Implement `POST /v1/pipelines/{id}/run`
-- [ ] Sequential pipeline executor (Coder → Reviewer mock for now)
-- [ ] Tests
-- **Demo at end of week:** Pipeline runs 2 LLM-powered agents in sequence
+**Not done in Week 5 (still open, not yet scheduled):** tool-calling support and token usage / cost tracking per task. Tool-calling is being pulled into Week 6 below (see MCP note). Cost tracking is still unscheduled — flag before Week 9 federation work, since `cost_limit_usd` and usage billing depend on it.
 
 ---
 
-## Week 6 — Coder Agent
+## Week 6 — Coder Agent + Tool Use (built-in tools + MCP)
 
 Started: ____
 Finished: ____
-**Goal:** A real agent that writes code from prompts.
+**Goal:** A real agent that writes code from prompts, and a tool-calling loop any agent can use —
+including calling out to external MCP servers (e.g. Jira).
 
+**Why MCP got added here (2026-07-09):** `mcp_servers` has been in the documented `AgentConfig`
+schema since Week 0 (`ARCHITECTURE.md` §5, `PLAN.md` §7) but was never on the week-by-week plan
+and isn't wired to anything in code — `AgentConfig` (`agents/base.py`) has no `tools` or
+`mcp_servers` field, and `llm/dispatch.complete()` does single-shot completion only, no
+function-calling loop. Built-in tools (`file_read`, etc.) and MCP-provided tools need the same
+underlying mechanism, so build the loop once here and support both.
+
+### Section A: Tool-calling loop in the LLM dispatch layer
+- [ ] Extend `llm/dispatch.complete()` (or add a new `dispatch.run_with_tools()`) to support a
+      tool-call / tool-result loop via LiteLLM's function-calling interface
+- [ ] Add `tools: list[str]` and `mcp_servers: list[str]` to `AgentConfig` (`agents/base.py`)
+- [ ] Tests: agent with no tools behaves exactly as before (no regression), agent with a tool
+      correctly round-trips a tool call → tool result → final answer (mocked)
+
+### Section B: Built-in tools
 - [ ] Coder agent system prompt
 - [ ] Tools: `file_read`, `file_write`, `run_tests`, `git_diff`
 - [ ] Workspace isolation (sandbox per task)
 - [ ] Tests for each tool
 - [ ] End-to-end test: "add a Flask login endpoint" → working code
-- **Demo at end of week:** Coder generates real code for a real task
+
+### Section C: MCP client support
+- [ ] **Decide:** official `mcp` Python SDK vs. minimal hand-rolled JSON-RPC client — needs
+      sign-off before adding to `pyproject.toml` (CLAUDE.md §3.2: no new libraries without asking)
+- [ ] MCP client wired into the Section A tool loop — an agent's `mcp_servers` list is resolved
+      into callable tools alongside its built-in `tools` list
+- [ ] Config validation: reject unreachable/misconfigured MCP server URLs at deploy time, not
+      silently at first call
+- [ ] Test agent: point at a local mock MCP server (not real Jira) — verify an agent can call a
+      tool exposed by that server and use the result in its response
+- **Demo at end of week:** Coder generates real code for a real task, *and* a separate test agent
+  calls a tool on a local mock MCP server end to end (proves the Jira case will work once a real
+  Jira MCP server + trust config point at it — no separate Jira-specific code needed)
 
 ---
 
