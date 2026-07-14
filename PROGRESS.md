@@ -8,11 +8,14 @@
 
 ## Current Status
 
-- **Current week:** Week 6 (Coder Agent + Tool Use — not started)
-- **Last session:** 2026-07-04
-- **Next session goal:** Week 6 — Coder agent, built-in tools, and MCP client support (see Week 6 below)
+- **Current week:** Week 6 (Coder Agent + Tool Use — Section A done)
+- **Last session:** 2026-07-13
+- **Next session goal:** Week 6 Section B — built-in tools (`file_read`, `file_write`, `run_tests`,
+  `git_diff`), Coder system prompt, workspace isolation
 - **Blockers:** None known. Docker daemon must be running locally before integration tests (`docker compose up`).
-- **Open questions:** MCP client — use the official `mcp` Python SDK (needs adding to `pyproject.toml`, requires sign-off per CLAUDE.md §3.2) vs. a minimal hand-rolled JSON-RPC client. Decide at the start of Week 6.
+- **Open questions:** MCP client (Section C) — official `mcp` Python SDK vs. a minimal hand-rolled
+  JSON-RPC client. Needs sign-off before adding to `pyproject.toml` per CLAUDE.md §3.2. Not yet
+  decided — decide at the start of Section C.
 - **Doc note (2026-07-09):** Weeks 1–5 checkboxes below were back-filled from `git log` — this file wasn't updated after Week 2 for a while even though the work kept shipping. Keep it current going forward.
 
 ---
@@ -224,7 +227,7 @@ Finished: 2026-07-04
 
 ## Week 6 — Coder Agent + Tool Use (built-in tools + MCP)
 
-Started: ____
+Started: 2026-07-13
 Finished: ____
 **Goal:** A real agent that writes code from prompts, and a tool-calling loop any agent can use —
 including calling out to external MCP servers (e.g. Jira).
@@ -237,11 +240,18 @@ function-calling loop. Built-in tools (`file_read`, etc.) and MCP-provided tools
 underlying mechanism, so build the loop once here and support both.
 
 ### Section A: Tool-calling loop in the LLM dispatch layer
-- [ ] Extend `llm/dispatch.complete()` (or add a new `dispatch.run_with_tools()`) to support a
-      tool-call / tool-result loop via LiteLLM's function-calling interface
-- [ ] Add `tools: list[str]` and `mcp_servers: list[str]` to `AgentConfig` (`agents/base.py`)
-- [ ] Tests: agent with no tools behaves exactly as before (no regression), agent with a tool
-      correctly round-trips a tool call → tool result → final answer (mocked)
+- [x] `llm/dispatch.run_with_tools()` — new function alongside `complete()`; loops on LiteLLM's
+      function-calling interface (tool_choice="auto") until the model returns a final text
+      answer, executing each tool call via a caller-supplied async `tool_executor(name, args)`
+      and feeding the result back as a `role: tool` message; raises `RuntimeError` past
+      `max_iterations` (default 5) with no final answer
+- [x] `AgentConfig` (`agents/base.py`) gains `tools: list[str] = []` and
+      `mcp_servers: list[str] = []` — data only, not wired to GenericAgent yet (Section B/C)
+- [x] `tests/test_llm/test_dispatch.py` — 4 tests: `complete()` sends no `tools` kwarg and is
+      unaffected (no regression), `run_with_tools()` returns immediately with no tool calls,
+      round-trips a tool call → tool result → final answer, raises past `max_iterations`
+- [x] 73/73 tests passing
+- [x] Committed: pending
 
 ### Section B: Built-in tools
 - [ ] Coder agent system prompt

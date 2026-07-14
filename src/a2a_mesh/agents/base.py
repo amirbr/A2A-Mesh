@@ -45,6 +45,8 @@ class AgentConfig(BaseModel):
     system_prompt: str = ""
     skills: list[SkillConfig] = []
     streaming: bool = False
+    tools: list[str] = []
+    mcp_servers: list[str] = []
 
 
 class BaseAgent(AgentExecutor, ABC):
