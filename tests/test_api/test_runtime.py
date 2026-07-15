@@ -74,6 +74,55 @@ async def test_deploy_requires_auth(client: AsyncClient, agent_id: str) -> None:
     assert resp.status_code == 401
 
 
+@pytest.mark.asyncio
+async def test_deploy_rejects_unreachable_mcp_server(client: AsyncClient, auth_token: str) -> None:
+    """A misconfigured mcp_servers URL fails deploy, not the first message the agent gets."""
+    create_resp = await client.post(
+        "/v1/agents",
+        json={
+            "name": "mcp-agent",
+            "display_name": "MCP Agent",
+            "config": {"mcp_servers": ["http://127.0.0.1:1/mcp"]},
+        },
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    agent_id_ = create_resp.json()["id"]
+
+    resp = await client.post(
+        f"/v1/agents/{agent_id_}/deploy",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "validation_error"
+    assert registry.get(agent_id_) is None
+
+
+@pytest.mark.asyncio
+async def test_deploy_accepts_reachable_mcp_server(
+    client: AsyncClient, auth_token: str, mock_mcp_server: str
+) -> None:
+    create_resp = await client.post(
+        "/v1/agents",
+        json={
+            "name": "mcp-agent-ok",
+            "display_name": "MCP Agent OK",
+            "config": {"mcp_servers": [mock_mcp_server]},
+        },
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+    agent_id_ = create_resp.json()["id"]
+
+    resp = await client.post(
+        f"/v1/agents/{agent_id_}/deploy",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "running"
+    registry.unregister(agent_id_)
+
+
 # ── Stop ──────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio

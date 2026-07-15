@@ -8,14 +8,13 @@
 
 ## Current Status
 
-- **Current week:** Week 6 (Coder Agent + Tool Use — Section A done)
-- **Last session:** 2026-07-13
-- **Next session goal:** Week 6 Section B — built-in tools (`file_read`, `file_write`, `run_tests`,
-  `git_diff`), Coder system prompt, workspace isolation
+- **Current week:** Week 6 (Coder Agent + Tool Use — complete, Sections A/B/C done)
+- **Last session:** 2026-07-15
+- **Next session goal:** Week 7 — Reviewer agent + `loop_until` pipeline logic (Coder ↔
+  Reviewer feedback loop)
 - **Blockers:** None known. Docker daemon must be running locally before integration tests (`docker compose up`).
-- **Open questions:** MCP client (Section C) — official `mcp` Python SDK vs. a minimal hand-rolled
-  JSON-RPC client. Needs sign-off before adding to `pyproject.toml` per CLAUDE.md §3.2. Not yet
-  decided — decide at the start of Section C.
+- **Open questions:** None open for Week 6. Week 7 will need to decide the Reviewer's scoring
+  output schema (`approved: bool`, `feedback: str` per PLAN.md) — no sign-off needed, no new deps.
 - **Doc note (2026-07-09):** Weeks 1–5 checkboxes below were back-filled from `git log` — this file wasn't updated after Week 2 for a while even though the work kept shipping. Keep it current going forward.
 
 ---
@@ -228,7 +227,7 @@ Finished: 2026-07-04
 ## Week 6 — Coder Agent + Tool Use (built-in tools + MCP)
 
 Started: 2026-07-13
-Finished: ____
+Finished: 2026-07-15
 **Goal:** A real agent that writes code from prompts, and a tool-calling loop any agent can use —
 including calling out to external MCP servers (e.g. Jira).
 
@@ -283,17 +282,36 @@ underlying mechanism, so build the loop once here and support both.
 - [x] Committed: pending
 
 ### Section C: MCP client support
-- [ ] **Decide:** official `mcp` Python SDK vs. minimal hand-rolled JSON-RPC client — needs
-      sign-off before adding to `pyproject.toml` (CLAUDE.md §3.2: no new libraries without asking)
-- [ ] MCP client wired into the Section A tool loop — an agent's `mcp_servers` list is resolved
-      into callable tools alongside its built-in `tools` list
-- [ ] Config validation: reject unreachable/misconfigured MCP server URLs at deploy time, not
-      silently at first call
-- [ ] Test agent: point at a local mock MCP server (not real Jira) — verify an agent can call a
-      tool exposed by that server and use the result in its response
-- **Demo at end of week:** Coder generates real code for a real task, *and* a separate test agent
-  calls a tool on a local mock MCP server end to end (proves the Jira case will work once a real
-  Jira MCP server + trust config point at it — no separate Jira-specific code needed)
+- [x] **Decided (2026-07-15, user sign-off):** official `mcp` Python SDK, not hand-rolled —
+      added `mcp>=1.28.1` to `pyproject.toml` via `uv add mcp`
+- [x] `agents/mcp_client.py` — `discover_tools()`/`call_tool()` over the SDK's Streamable HTTP
+      transport (`streamable_http_client`, not the deprecated `streamablehttp_client`);
+      `discover_tools` raises `McpServerError` on an unreachable/broken server, `call_tool`
+      never raises — connection failures come back as `"Error: ..."` text, same pattern as
+      `execute_builtin_tool`
+- [x] `agents/generic.py::_process_with_tools` — now resolves `config.mcp_servers` into tool
+      schemas alongside `config.tools`, in the same flat list the model sees; routes each tool
+      call to the built-in dispatcher or the right MCP server transparently
+- [x] `api/v1/runtime.py` — `_validate_mcp_servers()` called on `/deploy` and `/restart`;
+      unreachable server → `422 validation_error` before the agent ever registers, not a
+      silent failure on the agent's first real message
+- [x] `tests/conftest.py` — `mock_mcp_server` fixture: a real local MCP server (`FastMCP` +
+      `uvicorn`, one `get_weather` tool) bound to a free port, for end-to-end tests
+- [x] `tests/test_agents/test_mcp_client.py` — 4 tests: discover real tool schema, call real
+      tool and get the real result, unknown-tool error string, unreachable-server raises
+      `McpServerError`
+- [x] `tests/test_agents/test_generic_agent.py` — end-to-end: agent configured with only
+      `mcp_servers` (no built-in tools) calls the real local MCP server's `get_weather` tool
+      and the real result reaches the model's final answer (LLM boundary mocked, MCP call is
+      real)
+- [x] `tests/test_api/test_runtime.py` — deploy rejects an unreachable `mcp_servers` URL
+      (422) and accepts a reachable one (200, against the real mock server)
+- [x] 96/96 tests passing
+- [x] Committed: pending
+- **Demo at end of week:** Coder generates real code for a real task (Section B), *and* a
+  separate agent calls a tool on a local mock MCP server end to end (Section C) — proves the
+  Jira case will work once a real Jira MCP server + trust config point at it, no
+  Jira-specific code needed
 
 ---
 
@@ -408,7 +426,8 @@ Finished: ____
 |---|---|---|
 | _yyyy-mm-dd_ | Modular monolith, not microservices | Speed of iteration; split later if pain demands |
 | _yyyy-mm-dd_ | Postgres for queues, not Kafka | MVP scale; add Kafka post-Series A |
-|  |  |  |
+| 2026-07-15 | Official `mcp` Python SDK, not hand-rolled JSON-RPC | Spec-compliant handshake/transports now, correct as MCP evolves; we only write the schema/result adapter |
+| 2026-07-15 | Coder is a `GenericAgent` config (system prompt + tools), not a new agent class | Runtime already deploys every agent generically via `AgentConfig` from DB JSON; a separate class would be unreachable through `/deploy` without extra dispatch logic |
 
 ---
 

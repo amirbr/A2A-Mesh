@@ -10,8 +10,10 @@ from pydantic import BaseModel
 
 from a2a_mesh.agents.base import AgentConfig, SkillConfig
 from a2a_mesh.agents.generic import GenericAgent
+from a2a_mesh.agents.mcp_client import DEPLOY_VALIDATION_TIMEOUT_SECONDS, McpServerError
+from a2a_mesh.agents.mcp_client import discover_tools as mcp_discover_tools
 from a2a_mesh.api.v1.auth import get_current_user
-from a2a_mesh.core.errors import ConflictError, ForbiddenError, NotFoundError
+from a2a_mesh.core.errors import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from a2a_mesh.db.models.agent import Agent
 from a2a_mesh.db.session import AsyncSessionLocal
 from a2a_mesh.orchestrator import registry
@@ -78,6 +80,21 @@ def _build_agent_instance(agent: Agent) -> GenericAgent:
     return GenericAgent(config, agent_db_id=agent.id)
 
 
+async def _validate_mcp_servers(mcp_servers: list[str]) -> None:
+    """Fail deploy/restart fast if any configured MCP server is unreachable.
+
+    Without this, a misconfigured `mcp_servers` URL would only surface the first time a
+    caller sends the deployed agent a message that triggers a tool call.
+    """
+    for server_url in mcp_servers:
+        try:
+            await mcp_discover_tools(server_url, timeout=DEPLOY_VALIDATION_TIMEOUT_SECONDS)
+        except McpServerError as exc:
+            raise ValidationError(
+                f"mcp_servers entry unreachable: {exc}", details={"mcp_server": server_url}
+            ) from exc
+
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @router.post("/{id}/deploy", response_model=StatusResponse)
@@ -89,6 +106,7 @@ async def deploy_agent(id: str, claims: Claims) -> StatusResponse:
         raise ConflictError(f"Agent '{agent.name}' is already running")
 
     instance = _build_agent_instance(agent)
+    await _validate_mcp_servers(instance.config.mcp_servers)
     await instance.on_start()
     registry.register(id, instance)
 
@@ -199,6 +217,7 @@ async def restart_agent(id: str, claims: Claims) -> StatusResponse:
         registry.unregister(id)
 
     new_instance = _build_agent_instance(agent_record)
+    await _validate_mcp_servers(new_instance.config.mcp_servers)
     await new_instance.on_start()
     registry.register(id, new_instance)
 

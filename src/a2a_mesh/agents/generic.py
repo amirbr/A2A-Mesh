@@ -8,6 +8,8 @@ from pathlib import Path
 from a2a.server.agent_execution import RequestContext
 
 from a2a_mesh.agents.base import BaseAgent
+from a2a_mesh.agents.mcp_client import call_tool as mcp_call_tool
+from a2a_mesh.agents.mcp_client import discover_tools as mcp_discover_tools
 from a2a_mesh.agents.tools import BUILTIN_TOOL_SCHEMAS, Workspace, execute_builtin_tool
 from a2a_mesh.db.models.agent import Agent
 from a2a_mesh.db.session import AsyncSessionLocal
@@ -32,7 +34,7 @@ class GenericAgent(BaseAgent):
             return "(no input)"
 
         try:
-            if self.config.tools:
+            if self.config.tools or self.config.mcp_servers:
                 return await self._process_with_tools(message)
             return await dispatch.complete(
                 provider=self.config.provider,
@@ -52,13 +54,28 @@ class GenericAgent(BaseAgent):
             raise
 
     async def _process_with_tools(self, message: str) -> str:
-        """Run the tool-calling loop in a fresh, isolated workspace for this task."""
+        """Run the tool-calling loop in a fresh, isolated workspace for this task.
+
+        Combines built-in tools (`config.tools`) with tools discovered from each of the
+        agent's `config.mcp_servers` through the same loop — the model sees one flat list
+        of tools and doesn't know or care which are local vs. MCP-provided.
+        """
         schemas = [BUILTIN_TOOL_SCHEMAS[name] for name in self.config.tools if name in BUILTIN_TOOL_SCHEMAS]
+
+        mcp_tool_servers: dict[str, str] = {}
+        for server_url in self.config.mcp_servers:
+            for schema in await mcp_discover_tools(server_url):
+                name = schema["function"]["name"]
+                mcp_tool_servers[name] = server_url
+                schemas.append(schema)
+
         workspace_dir = Path(tempfile.mkdtemp(prefix=f"{self.config.name}-"))
         workspace = Workspace(workspace_dir)
         try:
 
             async def tool_executor(name: str, args: dict) -> str:  # type: ignore[type-arg]
+                if name in mcp_tool_servers:
+                    return await mcp_call_tool(mcp_tool_servers[name], name, args)
                 return await execute_builtin_tool(workspace, name, args)
 
             return await dispatch.run_with_tools(

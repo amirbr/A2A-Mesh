@@ -13,6 +13,7 @@ def _make_agent(
     system_prompt: str = "You are a helpful assistant.",
     provider: str = "anthropic",
     tools: list[str] | None = None,
+    mcp_servers: list[str] | None = None,
 ) -> GenericAgent:
     config = AgentConfig(
         name="test-agent",
@@ -24,6 +25,7 @@ def _make_agent(
         temperature=0.2,
         max_tokens=100,
         tools=tools or [],
+        mcp_servers=mcp_servers or [],
     )
     return GenericAgent(config)
 
@@ -138,3 +140,45 @@ async def test_process_with_tools_uses_tool_loop_and_cleans_up_workspace() -> No
     assert len(call_kwargs["tools"]) == 2
     assert callable(call_kwargs["tool_executor"])
     mock_rmtree.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_process_calls_real_mcp_tool_and_uses_result(mock_mcp_server: str) -> None:
+    """End-to-end: an agent with no built-in tools, only an mcp_servers entry, calls a real
+    tool on a real local MCP server and the result reaches the model's final answer."""
+    import json
+    from types import SimpleNamespace
+
+    agent = _make_agent(mcp_servers=[mock_mcp_server])
+    ctx = _make_context()
+
+    def _tool_call(call_id: str, name: str, arguments: dict) -> SimpleNamespace:  # type: ignore[type-arg]
+        function = SimpleNamespace(name=name, arguments=json.dumps(arguments))
+        message = SimpleNamespace(content=None, tool_calls=[SimpleNamespace(id=call_id, function=function)])
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+    def _final(content: str) -> SimpleNamespace:
+        message = SimpleNamespace(content=content, tool_calls=None)
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+    script = [
+        _tool_call("call_1", "get_weather", {"city": "Boston"}),
+        _final("It's sunny in Boston."),
+    ]
+    calls: list[dict] = []  # type: ignore[type-arg]
+
+    async def fake_acompletion(**kwargs: object) -> SimpleNamespace:
+        calls.append(kwargs)  # type: ignore[arg-type]
+        return script[len(calls) - 1]
+
+    with patch("a2a_mesh.llm.dispatch.litellm.acompletion", side_effect=fake_acompletion):
+        result = await agent.process("what's the weather in Boston?", ctx)
+
+    assert result == "It's sunny in Boston."
+    final_messages = calls[-1]["messages"]
+    tool_messages = [m["content"] for m in final_messages if m.get("role") == "tool"]
+    assert tool_messages == ["sunny in Boston"]
+
+    # The model must have seen the MCP tool alongside any built-ins (none configured here).
+    first_call_tools = calls[0]["tools"]
+    assert any(t["function"]["name"] == "get_weather" for t in first_call_tools)

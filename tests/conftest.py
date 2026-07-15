@@ -14,8 +14,14 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "placeholder")
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-not-for-production")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
+import asyncio  # noqa: E402
+import socket  # noqa: E402
+from collections.abc import AsyncIterator  # noqa: E402
+
 import pytest  # noqa: E402
+import uvicorn  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
+from mcp.server.fastmcp import FastMCP  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from unittest.mock import AsyncMock, patch  # noqa: E402
 
@@ -57,3 +63,37 @@ async def client() -> AsyncClient:
     """Async HTTP client wired to the FastAPI app."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
+
+
+def _free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+@pytest.fixture()
+async def mock_mcp_server() -> AsyncIterator[str]:
+    """Run a real local MCP server (streamable HTTP) with one `get_weather` tool.
+
+    Yields the server's MCP endpoint URL. Used to prove the MCP client integration works
+    against an actual server, not just mocks of the `mcp` SDK.
+    """
+    mcp = FastMCP("test-mcp-server")
+
+    @mcp.tool()
+    def get_weather(city: str) -> str:
+        """Return a canned weather report for a city."""
+        return f"sunny in {city}"
+
+    port = _free_port()
+    config = uvicorn.Config(mcp.streamable_http_app(), host="127.0.0.1", port=port, log_level="error")
+    server = uvicorn.Server(config)
+    task = asyncio.create_task(server.serve())
+    while not server.started:
+        await asyncio.sleep(0.01)
+
+    try:
+        yield f"http://127.0.0.1:{port}/mcp"
+    finally:
+        server.should_exit = True
+        await task
