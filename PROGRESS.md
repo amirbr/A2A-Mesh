@@ -254,11 +254,33 @@ underlying mechanism, so build the loop once here and support both.
 - [x] Committed: pending
 
 ### Section B: Built-in tools
-- [ ] Coder agent system prompt
-- [ ] Tools: `file_read`, `file_write`, `run_tests`, `git_diff`
-- [ ] Workspace isolation (sandbox per task)
-- [ ] Tests for each tool
-- [ ] End-to-end test: "add a Flask login endpoint" → working code
+- [x] `agents/tools.py` — `Workspace` (sandboxed dir, rejects path-escape reads/writes) +
+      `file_read`, `file_write`, `run_tests` (real `pytest` subprocess via `sys.executable -m
+      pytest`, 30s timeout), `git_diff`; `execute_builtin_tool()` dispatcher never raises —
+      returns `"Error: ..."` strings so the model can see and react to tool failures
+- [x] `agents/generic.py` — `GenericAgent._process_with_tools()`: when `config.tools` is
+      non-empty, creates a fresh temp-dir `Workspace` per call, runs
+      `dispatch.run_with_tools()` against it, and always cleans up the dir in `finally`; empty
+      `config.tools` still goes through the original `dispatch.complete()` path unchanged
+- [x] `agents/coder.py` — `CODER_SYSTEM_PROMPT` + `build_coder_config()`; the Coder is a
+      `GenericAgent` configured with the four built-in tools, not a separate class — matches
+      how the runtime already deploys every agent generically
+- [x] `api/v1/runtime.py::_build_agent_instance` — now reads `tools`/`mcp_servers` out of the
+      DB-stored config JSON, so `POST /v1/agents` with `config: {"tools": [...]}` actually
+      reaches the deployed agent
+- [x] `tests/test_agents/test_tools.py` — 13 tests: workspace path-escape rejection (relative
+      and absolute), file_read/file_write round trip incl. parent-dir creation, missing-file
+      error string, run_tests against a real passing and a real failing test, git_diff on a
+      non-repo dir, unknown-tool/missing-arg/path-escape dispatch errors
+- [x] `tests/test_agents/test_generic_agent.py` — 2 new tests: no-tools agent never touches
+      `run_with_tools` (regression guard), tools-configured agent calls `run_with_tools` with
+      the right schemas/executor and always calls `shutil.rmtree`
+- [x] `tests/test_agents/test_coder_agent.py` — end-to-end test: scripted "add a Flask login
+      endpoint" tool-call sequence (file_write ×2, run_tests, final answer) against **real**
+      tool execution — a real subprocess `pytest` run confirms "2 passed" in the tool result
+      fed back to the model; only the LLM boundary (`litellm.acompletion`) is mocked
+- [x] 89/89 tests passing
+- [x] Committed: pending
 
 ### Section C: MCP client support
 - [ ] **Decide:** official `mcp` Python SDK vs. minimal hand-rolled JSON-RPC client — needs

@@ -72,6 +72,8 @@ def _build_agent_instance(agent: Agent) -> GenericAgent:
         max_tokens=raw_config.get("max_tokens", 4096),
         system_prompt=raw_config.get("system_prompt", ""),
         skills=[SkillConfig(**s) for s in raw_config.get("skills", [])],
+        tools=raw_config.get("tools", []),
+        mcp_servers=raw_config.get("mcp_servers", []),
     )
     return GenericAgent(config, agent_db_id=agent.id)
 
