@@ -317,12 +317,27 @@ underlying mechanism, so build the loop once here and support both.
 
 ## Week 7 — Reviewer Agent + Loop Logic
 
-Started: ____
+Started: 2026-07-18
 Finished: ____
 **Goal:** 2-agent pipeline with feedback loop.
 
-- [ ] Reviewer agent system prompt
-- [ ] Reviewer scoring output schema (`approved: bool`, `feedback: str`)
+### Section A: Reviewer agent
+- [x] `agents/reviewer.py` — `REVIEWER_SYSTEM_PROMPT` + `build_reviewer_config()`, same
+      `GenericAgent`-config pattern as the Coder (`agents/coder.py`); no tools — it only reads
+      the text the pipeline hands it. Prompt requires a JSON-only reply: `{"approved": bool,
+      "feedback": str}`, matching the schema decided in the Week 6 progress note and
+      `PLAN.md`'s `loop_until: {"field": "approved", "equals": true}` example.
+- [x] `agents/coder.py` — system prompt tweak: the Coder's tool workspace is deleted after
+      each call (Week 6 design), so its old final answer ("Done. Added login()...") gave the
+      Reviewer nothing to review. Prompt now requires the final answer to include the full
+      contents of every changed file, labeled by filename.
+- [x] `tests/test_agents/test_reviewer_agent.py` — 3 tests: approves valid code, rejects with
+      feedback, confirms no tools/mcp_servers configured. Uses the autouse `mock_llm` fixture
+      (patches `dispatch.complete` directly) rather than `litellm.acompletion`, since the
+      Reviewer has no tools and never enters the tool-calling loop.
+- [x] 99/99 tests passing
+- [x] Committed: pending
+
 - [ ] Pipeline `loop_until` logic + `max_iterations` cap
 - [ ] End-to-end test: Coder ↔ Reviewer until approved
 - **Demo at end of week:** Full Coder ↔ Reviewer loop produces approved code

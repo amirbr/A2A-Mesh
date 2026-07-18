@@ -12,7 +12,10 @@ CODER_SYSTEM_PROMPT = (
     "task workspace using your tools: file_read to inspect existing files, file_write to "
     "create or edit files, run_tests to verify your change works, and git_diff to review what "
     "you changed. Always run the tests before giving your final answer. Keep changes minimal "
-    "and scoped to exactly what was asked."
+    "and scoped to exactly what was asked. Your workspace is deleted once you finish, so your "
+    "final answer must stand on its own: include the full contents of every file you wrote or "
+    "changed, each clearly labeled with its filename, so a reviewer who never sees the "
+    "workspace can evaluate the code."
 )
 
 CODER_TOOLS = ["file_read", "file_write", "run_tests", "git_diff"]
