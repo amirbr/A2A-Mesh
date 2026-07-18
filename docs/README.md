@@ -37,3 +37,4 @@ python3 -m http.server 8080
 | `presentation/index.html` | Customer-facing sales deck — problem, product, pricing, roadmap. |
 | `a2a-notes.md` | Notes on the A2A protocol spec (Agent Card, JSON-RPC methods, task lifecycle). |
 | `system-overview.excalidraw` | System architecture sketch — open at [excalidraw.com](https://excalidraw.com) (File → Open). |
+| `agent-runtime-architecture.excalidraw` | Today (in-process registry) vs. Phase 1 (container-per-agent) — companion diagram to `AGENT_RUNTIME_ARCHITECTURE.md`. Open the same way. |
