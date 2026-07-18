@@ -8,13 +8,12 @@
 
 ## Current Status
 
-- **Current week:** Week 6 (Coder Agent + Tool Use — complete, Sections A/B/C done)
-- **Last session:** 2026-07-15
-- **Next session goal:** Week 7 — Reviewer agent + `loop_until` pipeline logic (Coder ↔
-  Reviewer feedback loop)
+- **Current week:** Week 7 (Reviewer Agent + Loop Logic — complete, Sections A/B done)
+- **Last session:** 2026-07-18
+- **Next session goal:** Week 8 — Jira agent + full 3-agent MVP pipeline (Coder → Reviewer → Jira)
 - **Blockers:** None known. Docker daemon must be running locally before integration tests (`docker compose up`).
-- **Open questions:** None open for Week 6. Week 7 will need to decide the Reviewer's scoring
-  output schema (`approved: bool`, `feedback: str` per PLAN.md) — no sign-off needed, no new deps.
+- **Open questions:** None open for Week 7. Week 8 needs a real Jira instance/credentials to
+  test against (see PLAN.md Week 8 goal) — flag before starting if not available yet.
 - **Doc note (2026-07-09):** Weeks 1–5 checkboxes below were back-filled from `git log` — this file wasn't updated after Week 2 for a while even though the work kept shipping. Keep it current going forward.
 
 ---
@@ -318,7 +317,7 @@ underlying mechanism, so build the loop once here and support both.
 ## Week 7 — Reviewer Agent + Loop Logic
 
 Started: 2026-07-18
-Finished: ____
+Finished: 2026-07-18
 **Goal:** 2-agent pipeline with feedback loop.
 
 ### Section A: Reviewer agent
@@ -338,8 +337,30 @@ Finished: ____
 - [x] 99/99 tests passing
 - [x] Committed: `1861c4c feat: reviewer agent with structured approve/feedback output`
 
-- [ ] Pipeline `loop_until` logic + `max_iterations` cap
-- [ ] End-to-end test: Coder ↔ Reviewer until approved
+### Section B: Pipeline `loop_until` logic + end-to-end test
+- [x] `orchestrator/engine.py` — `run_pipeline` switched from a `for` loop to an index-based
+      `while` loop so a step can jump backward. A step with `loop_until: {"field": ...,
+      "equals": ...}` parses its own JSON output after running; if the field doesn't match,
+      the engine rebuilds the input as `{original task} + reviewer feedback` and re-runs the
+      *previous* step, repeating until the condition is met or `max_iterations` (default 3,
+      per-step) is exhausted, at which point the run fails with a clear error. First step
+      can't have `loop_until` (nothing to loop back to) — raises `ValidationError`.
+- [x] `orchestrator/engine.py::_loop_condition_met()` — new helper; raises `ValidationError`
+      if the step's output isn't a JSON object, rather than silently treating unparseable
+      output as "not approved."
+- [x] `api/v1/pipelines.py::StepConfig` — **bug found while testing:** this Pydantic model
+      only declared `agent_id`/`name`, so `loop_until`/`max_iterations` sent in
+      `POST /v1/pipelines` were silently dropped before ever reaching the engine. Added both
+      fields as optional. Also fixed a related bug this exposed: `model_dump()` always
+      includes `max_iterations` (as `None` when unset), so `step.get("max_iterations", 3)`
+      never fell back to the default — changed to `step.get("max_iterations") or 3`.
+- [x] `tests/test_api/test_pipelines.py` — 2 new end-to-end tests: Coder writes plaintext-
+      password code → Reviewer rejects with feedback → Coder revises to hashed comparison →
+      Reviewer approves → run completes (full loop, both agents deployed for real, only the
+      LLM boundary mocked); and a second test confirming the run fails cleanly once
+      `max_iterations` is exhausted with no approval.
+- [x] 101/101 tests passing
+- [x] Committed: pending
 - **Demo at end of week:** Full Coder ↔ Reviewer loop produces approved code
 
 ---

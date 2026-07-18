@@ -26,6 +26,8 @@ Claims = Annotated[dict, Depends(get_current_user)]  # type: ignore[type-arg]
 class StepConfig(BaseModel):
     agent_id: str
     name: str
+    loop_until: dict[str, Any] | None = None
+    max_iterations: int | None = None
 
 
 class PipelineCreate(BaseModel):

@@ -1,10 +1,15 @@
 """Tests for pipeline CRUD and execution endpoints."""
 
+import json
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
 
+from a2a_mesh.agents.coder import build_coder_config
+from a2a_mesh.agents.reviewer import build_reviewer_config
 from a2a_mesh.orchestrator import registry
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -193,3 +198,181 @@ async def test_run_two_step_pipeline(
     assert resp.json()["status"] == "completed"
     registry.unregister(agent_id)
     registry.unregister(agent2_id)
+
+
+# ── loop_until: Coder ↔ Reviewer ──────────────────────────────────────────────
+
+LOGIN_V1 = (
+    '_USERS = {"alice": "hunter2"}\n\n'
+    "def login(username, password):\n"
+    "    return _USERS.get(username) == password\n"
+)
+LOGIN_V2 = (
+    'import hashlib\n\n_USERS = {"alice": hashlib.sha256(b"hunter2").hexdigest()}\n\n'
+    "def login(username, password):\n"
+    "    return _USERS.get(username) == hashlib.sha256(password.encode()).hexdigest()\n"
+)
+LOGIN_TEST = (
+    "from login import login\n\n"
+    "def test_login_success():\n"
+    '    assert login("alice", "hunter2") is True\n'
+)
+
+
+def _tool_call(call_id: str, name: str, arguments: dict) -> SimpleNamespace:  # type: ignore[type-arg]
+    function = SimpleNamespace(name=name, arguments=json.dumps(arguments))
+    tool_call = SimpleNamespace(id=call_id, function=function)
+    message = SimpleNamespace(content=None, tool_calls=[tool_call])
+    return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+def _final(content: str) -> SimpleNamespace:  # type: ignore[type-arg]
+    message = SimpleNamespace(content=content, tool_calls=None)
+    return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+def _coder_run_script(call_offset: int, code: str) -> list[SimpleNamespace]:  # type: ignore[type-arg]
+    return [
+        _tool_call(f"call_{call_offset}_1", "file_write", {"path": "login.py", "content": code}),
+        _tool_call(f"call_{call_offset}_2", "file_write", {"path": "test_login.py", "content": LOGIN_TEST}),
+        _tool_call(f"call_{call_offset}_3", "run_tests", {}),
+        _final(f"Done. login.py:\n{code}"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_coder_reviewer_loop_until_approved(
+    client: AsyncClient, auth_token: str, mock_llm
+) -> None:  # type: ignore[no-untyped-def]
+    """Reviewer rejects the first draft, Coder revises, Reviewer approves — loop_until exits."""
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    coder_cfg = build_coder_config()
+    resp = await client.post("/v1/agents", json={
+        "name": coder_cfg.name,
+        "display_name": coder_cfg.display_name,
+        "description": coder_cfg.description,
+        "system_prompt": coder_cfg.system_prompt,
+        "config": {"tools": coder_cfg.tools},
+    }, headers=headers)
+    coder_id = resp.json()["id"]
+
+    reviewer_cfg = build_reviewer_config()
+    resp = await client.post("/v1/agents", json={
+        "name": reviewer_cfg.name,
+        "display_name": reviewer_cfg.display_name,
+        "description": reviewer_cfg.description,
+        "system_prompt": reviewer_cfg.system_prompt,
+    }, headers=headers)
+    reviewer_id = resp.json()["id"]
+
+    resp = await client.post("/v1/pipelines", json={
+        "name": "coder-reviewer-loop",
+        "steps": [
+            {"agent_id": coder_id, "name": "coder"},
+            {
+                "agent_id": reviewer_id,
+                "name": "reviewer",
+                "loop_until": {"field": "approved", "equals": True},
+                "max_iterations": 3,
+            },
+        ],
+    }, headers=headers)
+    pip_id = resp.json()["id"]
+
+    await client.post(f"/v1/agents/{coder_id}/deploy", headers=headers)
+    await client.post(f"/v1/agents/{reviewer_id}/deploy", headers=headers)
+
+    coder_script = _coder_run_script(1, LOGIN_V1) + _coder_run_script(2, LOGIN_V2)
+    calls: list[dict] = []  # type: ignore[type-arg]
+
+    async def fake_acompletion(**kwargs: object) -> SimpleNamespace:
+        calls.append(kwargs)  # type: ignore[arg-type]
+        return coder_script[len(calls) - 1]
+
+    mock_llm.side_effect = [
+        '{"approved": false, "feedback": "Passwords are compared in plaintext."}',
+        '{"approved": true, "feedback": "Now uses hashed comparison."}',
+    ]
+
+    try:
+        with patch("a2a_mesh.llm.dispatch.litellm.acompletion", side_effect=fake_acompletion):
+            resp = await client.post(f"/v1/pipelines/{pip_id}/run",
+                                     json={"input": "add a login function"},
+                                     headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "completed"
+
+        final = json.loads(json.loads(data["output"])["text"])
+        assert final["approved"] is True
+        assert len(coder_script) == len(calls)  # Coder ran exactly twice (4 calls each)
+    finally:
+        registry.unregister(coder_id)
+        registry.unregister(reviewer_id)
+
+
+@pytest.mark.asyncio
+async def test_run_pipeline_loop_until_fails_after_max_iterations(
+    client: AsyncClient, auth_token: str, mock_llm
+) -> None:  # type: ignore[no-untyped-def]
+    """Reviewer never approves — pipeline fails once max_iterations is exhausted."""
+    headers = {"Authorization": f"Bearer {auth_token}"}
+
+    coder_cfg = build_coder_config()
+    resp = await client.post("/v1/agents", json={
+        "name": coder_cfg.name,
+        "display_name": coder_cfg.display_name,
+        "description": coder_cfg.description,
+        "system_prompt": coder_cfg.system_prompt,
+        "config": {"tools": coder_cfg.tools},
+    }, headers=headers)
+    coder_id = resp.json()["id"]
+
+    reviewer_cfg = build_reviewer_config()
+    resp = await client.post("/v1/agents", json={
+        "name": reviewer_cfg.name,
+        "display_name": reviewer_cfg.display_name,
+        "description": reviewer_cfg.description,
+        "system_prompt": reviewer_cfg.system_prompt,
+    }, headers=headers)
+    reviewer_id = resp.json()["id"]
+
+    resp = await client.post("/v1/pipelines", json={
+        "name": "coder-reviewer-loop-fail",
+        "steps": [
+            {"agent_id": coder_id, "name": "coder"},
+            {
+                "agent_id": reviewer_id,
+                "name": "reviewer",
+                "loop_until": {"field": "approved", "equals": True},
+                "max_iterations": 2,
+            },
+        ],
+    }, headers=headers)
+    pip_id = resp.json()["id"]
+
+    await client.post(f"/v1/agents/{coder_id}/deploy", headers=headers)
+    await client.post(f"/v1/agents/{reviewer_id}/deploy", headers=headers)
+
+    coder_script = _coder_run_script(1, LOGIN_V1) + _coder_run_script(2, LOGIN_V1)
+    calls: list[dict] = []  # type: ignore[type-arg]
+
+    async def fake_acompletion(**kwargs: object) -> SimpleNamespace:
+        calls.append(kwargs)  # type: ignore[arg-type]
+        return coder_script[len(calls) - 1]
+
+    mock_llm.return_value = '{"approved": false, "feedback": "Still plaintext."}'
+
+    try:
+        with patch("a2a_mesh.llm.dispatch.litellm.acompletion", side_effect=fake_acompletion):
+            resp = await client.post(f"/v1/pipelines/{pip_id}/run",
+                                     json={"input": "add a login function"},
+                                     headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "failed"
+        assert "loop_until" in data["error"]
+    finally:
+        registry.unregister(coder_id)
+        registry.unregister(reviewer_id)
