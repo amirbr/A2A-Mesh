@@ -4,6 +4,7 @@ import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+import litellm
 import pytest
 
 from a2a_mesh.llm import dispatch
@@ -13,6 +14,14 @@ from a2a_mesh.llm import dispatch
 def mock_llm() -> None:
     """Override conftest's global dispatch.complete mock — this file tests the real thing."""
     yield
+
+
+def test_drop_params_enabled() -> None:
+    """Importing dispatch must enable litellm.drop_params so provider-unsupported params
+    (e.g. our default temperature=0.2, which claude-opus-4-8 rejects) are dropped rather
+    than raising. Regression guard: the rest of the suite mocks the LLM boundary and would
+    never catch a real UnsupportedParamsError."""
+    assert litellm.drop_params is True
 
 
 def _response(content: str | None, tool_calls: list[SimpleNamespace] | None = None) -> SimpleNamespace:

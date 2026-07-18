@@ -63,7 +63,7 @@ Finished: 2026-06-26
 ### Section C: Connection verification + Google A2A sample
 - [x] Postgres confirmed from Python — PostgreSQL 15.18 on port 5435
 - [x] Redis confirmed from Python — Redis 7.4.9 on port 6379
-- [x] `scripts/run_echo_sample.py` — working A2A agent using `a2a-sdk` v1.1
+- [x] `scripts/run_echo_sample.py` — working A2A agent using `a2a-sdk` v1.1 _(standalone Week 1 learning sample; removed 2026-07-18 once real agents existed in `src/agents/` — see git history)_
   - `GET /.well-known/agent-card.json` — AgentCard with skills served
   - `POST /` with `SendMessage` (JSON-RPC, `A2A-Version: 1.0` header) — echoes back text
   - Key learnings: method is `SendMessage` not `message/send`; agent card at `/.well-known/agent-card.json`; `Message` response for immediate replies
@@ -71,7 +71,7 @@ Finished: 2026-06-26
 - [x] Committed: `28346b0 feat: postgres/redis connection verification and a2a echo sample`
 
 - **Ports note:** System has pgAdmin Postgres 16/18 on 5432/5433 — our containers use 5435/5436/6379
-- **Demo:** `uv run pytest tests/ -v` → 3/3; `uv run python scripts/run_echo_sample.py` → live A2A agent
+- **Demo:** `uv run pytest tests/ -v` → 3/3 (the echo sample was later removed; the echo agent now lives in the main app at `src/a2a_mesh/agents/echo.py`)
 
 ---
 

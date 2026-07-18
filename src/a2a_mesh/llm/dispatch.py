@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 
 litellm.suppress_debug_info = True
 litellm.anthropic_key = settings.anthropic_api_key
+# Drop provider-unsupported params instead of raising. Needed because our default
+# temperature (0.2) is rejected by some models — e.g. claude-opus-4-8 only accepts
+# temperature=1 — and we want one agent config to work across every provider.
+litellm.drop_params = True
 
 MAX_TOOL_ITERATIONS = 5
 
