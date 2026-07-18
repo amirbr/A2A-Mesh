@@ -336,7 +336,7 @@ Finished: ____
       (patches `dispatch.complete` directly) rather than `litellm.acompletion`, since the
       Reviewer has no tools and never enters the tool-calling loop.
 - [x] 99/99 tests passing
-- [x] Committed: pending
+- [x] Committed: `1861c4c feat: reviewer agent with structured approve/feedback output`
 
 - [ ] Pipeline `loop_until` logic + `max_iterations` cap
 - [ ] End-to-end test: Coder ↔ Reviewer until approved
