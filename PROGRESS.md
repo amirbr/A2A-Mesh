@@ -250,7 +250,7 @@ underlying mechanism, so build the loop once here and support both.
       unaffected (no regression), `run_with_tools()` returns immediately with no tool calls,
       round-trips a tool call → tool result → final answer, raises past `max_iterations`
 - [x] 73/73 tests passing
-- [x] Committed: pending
+- [x] Committed: `9cab7f1 feat: tool-calling loop in llm dispatch, tools/mcp_servers config fields`
 
 ### Section B: Built-in tools
 - [x] `agents/tools.py` — `Workspace` (sandboxed dir, rejects path-escape reads/writes) +
@@ -279,7 +279,7 @@ underlying mechanism, so build the loop once here and support both.
       tool execution — a real subprocess `pytest` run confirms "2 passed" in the tool result
       fed back to the model; only the LLM boundary (`litellm.acompletion`) is mocked
 - [x] 89/89 tests passing
-- [x] Committed: pending
+- [x] Committed: `0dc2539 feat: built-in tools, coder agent config, workspace-isolated tool loop`
 
 ### Section C: MCP client support
 - [x] **Decided (2026-07-15, user sign-off):** official `mcp` Python SDK, not hand-rolled —
@@ -307,7 +307,7 @@ underlying mechanism, so build the loop once here and support both.
 - [x] `tests/test_api/test_runtime.py` — deploy rejects an unreachable `mcp_servers` URL
       (422) and accepts a reachable one (200, against the real mock server)
 - [x] 96/96 tests passing
-- [x] Committed: pending
+- [x] Committed: `c607f25 feat: mcp client integration, deploy-time server validation`
 - **Demo at end of week:** Coder generates real code for a real task (Section B), *and* a
   separate agent calls a tool on a local mock MCP server end to end (Section C) — proves the
   Jira case will work once a real Jira MCP server + trust config point at it, no
