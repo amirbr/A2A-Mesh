@@ -58,7 +58,7 @@ The internal use case is the entry point. The cross-company federation is the lo
 | Database | PostgreSQL |
 | Cache / queue | Redis |
 | Auth | JWT + API keys |
-| Runtime | Docker, optional Kubernetes |
+| Runtime | Docker, container-per-agent (see §8). Kubernetes only for our own multi-host scaling if we ever need it (`AGENT_RUNTIME_ARCHITECTURE.md` §6), not a customer-facing product. |
 | Deployment | Railway / Fly.io to start, AWS later |
 | Testing | pytest |
 
@@ -104,7 +104,7 @@ The internal use case is the entry point. The cross-company federation is the lo
 - **Agent Registry** — stores agent definitions, configs, and capabilities
 - **Task Engine** — schedules and executes tasks across agents
 - **Federation Layer** — handles cross-company discovery and auth
-- **Agent Runtime** — where agents actually execute (managed cloud or self-hosted)
+- **Agent Runtime** — where agents actually execute: `managed` / `managed_dedicated` / `byo` (see §8)
 - **Postgres** — persistent storage (agents, pipelines, tasks, audit logs)
 - **Redis** — queues, caches, rate limits
 
@@ -491,51 +491,58 @@ Every agent has a `config` object. Full schema:
 
 ## 8. Where Agents Can Run (Runtime Options)
 
-The platform supports four runtime modes:
+The platform supports three runtime tiers — same three as `ARCHITECTURE.md` §7. All three run
+identical `AgentConfig`s and the exact same `GenericAgent` code; only *where the container
+executes* differs (`AGENT_RUNTIME_ARCHITECTURE.md` §3, goal 3 — the control plane never
+changes shape between tiers).
 
-### 8.1 Managed Cloud (default, easiest)
-You host the agent for the customer.
-- Customer creates an agent → we deploy it to our cloud
-- Auto-scaling, monitoring, logs all handled
-- Pay-per-use or subscription pricing
-- Best for: most customers, fastest start
+Not built yet as of Week 6 — everything still runs in-process (`orchestrator/registry.py`).
+`managed` ships in Week 13 (Phase 1, container-per-agent). `managed_dedicated` and `byo` are
+trigger-based, not calendar-scheduled — see §14 below and `AGENT_RUNTIME_ARCHITECTURE.md` §9.
 
-```json
-{ "runtime": "managed", "region": "us-east-1" }
-```
-
-### 8.2 Self-Hosted Docker
-Customer runs the agent themselves in a Docker container.
-- We give them an image: `acmecorp/agent-runtime:latest`
-- They run `docker run` with config env vars
-- Agent calls home to our orchestrator
-- Best for: privacy-sensitive customers
-
-```bash
-docker run \
-  -e A2A_AGENT_ID=agt_coder01 \
-  -e A2A_API_KEY=ak_live_... \
-  acmecorp/agent-runtime:latest
-```
-
-### 8.3 Self-Hosted Kubernetes
-For enterprises with K8s already.
-- We provide Helm chart
-- Multi-replica, auto-scaling
-- Best for: large enterprises
-
-### 8.4 Bring Your Own (BYO)
-Customer has an existing service. They register it as an A2A agent.
-- They expose `/a2a/...` endpoints themselves
-- We just route to them
-- Best for: companies who already built agents
+### 8.1 Managed (default)
+We host, shared container pool.
+- Customer creates an agent → we deploy it as a container on our shared Docker host(s)
+- Best for: most customers, fastest start — the only tier that exists at Week 13 launch
 
 ```json
-{
-  "runtime": "byo",
-  "endpoint": "https://internal-agent.acme.com/a2a/coder"
-}
+{ "runtime": "managed" }
 ```
+
+### 8.2 Managed, Dedicated
+We host, but on host(s) reserved for one company only — same container mechanism as Managed,
+different placement, no code difference, just which host it lands on.
+- Paid tier
+- Best for: enterprise / compliance-sensitive customers who want isolation without operating
+  any infrastructure themselves
+
+```json
+{ "runtime": "managed_dedicated", "host_id": "host_co_acme01" }
+```
+
+### 8.3 Bring Your Own (BYO) — Runner
+Customer runs the compute, in their own AWS/GCP/Azure account. We never see their cloud
+credentials and never need an inbound port opened on their side.
+- We ship a small container image (`a2a-mesh-runner`) — one `docker run` or a Terraform
+  module, customer's choice. This also covers "we already run Kubernetes": the Runner is just
+  a container, deploy it as a Pod — there's no separate Helm chart or K8s-specific product to
+  maintain on our side.
+- The Runner opens an **outbound-only** authenticated connection to our control plane — no
+  inbound firewall rules, ever.
+- It pulls its assigned `AgentConfig`s over that connection, runs the same `GenericAgent` code
+  every tier runs, and reports task results back over the same connection.
+- Best for: data-residency requirements, "this can never leave our AWS account"
+- Full design: `AGENT_RUNTIME_ARCHITECTURE.md` §7
+
+```json
+{ "runtime": "byo", "runner_id": "run_co_acme_prod" }
+```
+
+> Superseded design, kept here for context: an earlier version of this section had BYO mean
+> the customer exposes an inbound `/a2a/...` endpoint and we route to it. That's a hard sell
+> to any security team — opening inbound firewall rules to an external SaaS — so it's been
+> replaced by the outbound-only Runner above. See `AGENT_RUNTIME_ARCHITECTURE.md` §7 for the
+> full reasoning.
 
 ---
 
@@ -764,6 +771,24 @@ agent can use — including agents that call out to external MCP servers (e.g. J
 
 ---
 
+### Week 13 — Agent Runtime: Container-per-Agent
+**Deliverable:** Deployed agents run in real, isolated Docker containers instead of the
+in-process registry — closes both the multi-tenant isolation gap and the Week 6 tool-execution
+sandbox-escape risk. Full design in `AGENT_RUNTIME_ARCHITECTURE.md` §5.
+- Docker Engine API integration (library choice needs sign-off per CLAUDE.md §3.2)
+- Generic agent container image; `AgentConfig` injected per instance, not baked into the image
+- Per-company Docker network; resource limits (`--memory`/`--cpus`) per container
+- `/deploy`, `/stop`, `/restart`, `/health` re-pointed at the Docker API instead of the
+  in-memory registry — public API contract unchanged
+- Pipeline executor (`orchestrator/engine.py`) switched from in-process calls to real HTTP
+  calls against each agent's container
+
+Not calendar-scheduled beyond this: Phase 2 (multi-host scheduling, Kubernetes-or-not) and
+Phase 3 (customer BYO cloud via an outbound-only Runner) are trigger-based, not dated — see
+`AGENT_RUNTIME_ARCHITECTURE.md` §6–§9 for what triggers each.
+
+---
+
 ## 13. Success Criteria (end of Week 12)
 
 - [ ] 3-agent dev pipeline runs end-to-end on a real Jira board
@@ -776,6 +801,10 @@ agent can use — including agents that call out to external MCP servers (e.g. J
 
 ## 14. After Week 12 (Next Phase Preview)
 
+- Week 13: Agent runtime — container-per-agent (see above; first thing after MVP, not optional)
+- Multi-host agent scheduling, Kubernetes evaluation once a single host is the bottleneck
+  (`AGENT_RUNTIME_ARCHITECTURE.md` §6, trigger-based)
+- Customer BYO cloud runner (`AGENT_RUNTIME_ARCHITECTURE.md` §7, trigger-based)
 - Visual UI for building agents and pipelines (drag-and-drop)
 - Pre-built agent marketplace (templates)
 - Billing + multi-tenant accounts + Stripe integration
