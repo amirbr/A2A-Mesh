@@ -1,6 +1,7 @@
 services:
-  postgres:
+  db_dev:
     image: postgres:15-alpine
+    container_name: a2a-mesh-db-dev
     environment:
       POSTGRES_USER: a2a_mesh
       POSTGRES_PASSWORD: password
@@ -15,8 +16,9 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres_test:
+  db_test:
     image: postgres:15-alpine
+    container_name: a2a-mesh-db-test
     environment:
       POSTGRES_USER: a2a_mesh
       POSTGRES_PASSWORD: password
@@ -31,6 +33,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: a2a-mesh-redis
     ports:
       - "6379:6379"
     healthcheck:
