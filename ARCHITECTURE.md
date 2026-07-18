@@ -319,10 +319,13 @@ Visibility is checked on every call, before any other logic.
 
 | Mode | Description | Use case |
 |---|---|---|
-| `managed` | We host in our Docker pool | Default for most customers |
-| `byo` | Customer hosts; they expose A2A endpoints; we just route | Privacy-sensitive enterprises |
+| `managed` | We host, shared container pool | Default for most customers |
+| `managed_dedicated` | We host, isolated host(s) per company | Paid tier, compliance-sensitive |
+| `byo` | Customer runs an outbound-only "Runner" in their own cloud account; we never touch their credentials or expose inbound ports | Data-residency requirements |
 
-Self-hosted Docker / K8s deployment options exist for the customer side but are not orchestrated by us in MVP.
+Not built yet — as of Week 6 all agents still run in-process (`orchestrator/registry.py`, an
+in-memory dict), not in Docker. **See `AGENT_RUNTIME_ARCHITECTURE.md` for the full design,
+phased rollout plan, and why Kubernetes is deliberately deferred, not rejected.**
 
 ---
 
