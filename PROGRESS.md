@@ -360,7 +360,7 @@ Finished: 2026-07-18
       LLM boundary mocked); and a second test confirming the run fails cleanly once
       `max_iterations` is exhausted with no approval.
 - [x] 101/101 tests passing
-- [x] Committed: pending
+- [x] Committed: `192aa5f feat: pipeline loop_until logic, Coder-Reviewer feedback loop`
 - **Demo at end of week:** Full Coder ↔ Reviewer loop produces approved code
 
 ---
